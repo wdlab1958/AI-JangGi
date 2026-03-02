@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef } from 'react';
 
-const API_BASE = 'http://localhost:8001';
+// Next.js rewrite 프록시 사용 (CORS 회피) - next.config.js에서 /api/* → localhost:8001/api/* 프록시
+const API_BASE = '';
 
 export interface PieceData {
   type: string;

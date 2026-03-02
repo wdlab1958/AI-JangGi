@@ -34,8 +34,11 @@ export default function Home() {
   const [agentResults, setAgentResults] = useState<any>(null);
   const [lastAiMove, setLastAiMove] = useState<{ from: [number, number]; to: [number, number]; team: string } | null>(null);
 
-  // 초기 게임 생성
+  // 초기 게임 생성 (StrictMode 중복 방지)
+  const initialized = React.useRef(false);
   useEffect(() => {
+    if (initialized.current) return;
+    initialized.current = true;
     createGame();
   }, []);
 
