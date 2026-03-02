@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Node.js
+node_modules/
+.next/
+out/
+
+# Environment
+.env
+.env.*
+venv/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Data (runtime generated)
+data/long_term/games/
+data/long_term/players/
+data/long_term/patterns/
+data/long_term/stats.json
+
+# Test/Cache
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Logs
+*.log
+nohup.out
+*.~lock*

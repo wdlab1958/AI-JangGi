@@ -1,0 +1,330 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:root {
+  --bg-primary: #1a1a2e;
+  --bg-secondary: #16213e;
+  --bg-card: #0f3460;
+  --text-primary: #e8e8e8;
+  --text-secondary: #a8a8b8;
+  --accent-cho: #e74c3c;
+  --accent-han: #3498db;
+  --accent-gold: #f39c12;
+  --accent-green: #2ecc71;
+  --border-color: #2a2a4a;
+  --danger: #e74c3c;
+  --warning: #f39c12;
+  --success: #2ecc71;
+}
+
+body {
+  font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  overflow: hidden;
+  width: 1920px;
+  height: 1080px;
+}
+
+html {
+  font-size: 14px;
+}
+
+.app-container {
+  display: flex;
+  width: 1920px;
+  height: 1080px;
+  overflow: hidden;
+}
+
+/* 좌측 패널 */
+.left-panel {
+  width: 300px;
+  height: 100%;
+  background: var(--bg-secondary);
+  border-right: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+  overflow-y: auto;
+}
+
+/* 중앙 게임판 */
+.center-panel {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-primary);
+  min-width: 720px;
+}
+
+/* 우측 패널 */
+.right-panel {
+  width: 400px;
+  height: 100%;
+  background: var(--bg-secondary);
+  border-left: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+  overflow-y: auto;
+}
+
+/* 카드 스타일 */
+.card {
+  background: var(--bg-card);
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 12px;
+  border: 1px solid var(--border-color);
+}
+
+.card-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--accent-gold);
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* 타이머 */
+.timer {
+  font-size: 1.5rem;
+  font-weight: 700;
+  font-family: 'Courier New', monospace;
+  text-align: center;
+  padding: 8px;
+}
+
+/* 승률 게이지 */
+.win-gauge {
+  height: 24px;
+  background: var(--accent-cho);
+  border-radius: 12px;
+  overflow: hidden;
+  position: relative;
+  margin: 8px 0;
+}
+
+.win-gauge-fill {
+  height: 100%;
+  background: var(--accent-han);
+  transition: width 0.5s ease;
+  border-radius: 12px;
+}
+
+.win-gauge-label {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: white;
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+}
+
+/* 리스크 표시 */
+.risk-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.risk-low { background: var(--success); color: white; }
+.risk-medium { background: var(--warning); color: #333; }
+.risk-high { background: var(--danger); color: white; }
+.risk-critical { background: #8b0000; color: white; animation: pulse 1s infinite; }
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+/* 에이전트 상태 */
+.agent-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  font-size: 0.8rem;
+}
+
+.agent-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.agent-dot.active { background: var(--success); }
+.agent-dot.idle { background: var(--text-secondary); }
+.agent-dot.error { background: var(--danger); }
+
+/* 기물 이동 기록 */
+.move-list {
+  max-height: 300px;
+  overflow-y: auto;
+  font-size: 0.8rem;
+}
+
+.move-entry {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 8px;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+
+.move-entry:hover {
+  background: rgba(255,255,255,0.05);
+}
+
+/* AI 사고 과정 */
+.thinking-item {
+  padding: 8px;
+  margin-bottom: 6px;
+  background: rgba(255,255,255,0.03);
+  border-radius: 6px;
+  border-left: 3px solid var(--accent-gold);
+  font-size: 0.8rem;
+}
+
+.thinking-agent {
+  font-weight: 600;
+  color: var(--accent-gold);
+  font-size: 0.75rem;
+}
+
+/* 버튼 */
+.btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.85rem;
+  transition: all 0.2s;
+}
+
+.btn-primary {
+  background: var(--accent-han);
+  color: white;
+}
+
+.btn-primary:hover {
+  background: #2980b9;
+}
+
+.btn-danger {
+  background: var(--accent-cho);
+  color: white;
+}
+
+.btn-danger:hover {
+  background: #c0392b;
+}
+
+.btn-secondary {
+  background: var(--border-color);
+  color: var(--text-primary);
+}
+
+.btn-secondary:hover {
+  background: #3a3a5a;
+}
+
+.btn-group {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+/* 경고 메시지 */
+.warning-banner {
+  background: rgba(231, 76, 60, 0.15);
+  border: 1px solid var(--danger);
+  border-radius: 6px;
+  padding: 8px 12px;
+  margin-bottom: 8px;
+  font-size: 0.8rem;
+  color: #e74c3c;
+}
+
+/* 헤더 */
+.app-header {
+  text-align: center;
+  padding: 12px 0;
+}
+
+.app-header h1 {
+  font-size: 1.3rem;
+  color: var(--accent-gold);
+  letter-spacing: 2px;
+}
+
+.app-header .subtitle {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+/* 스크롤바 */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #4a4a6a;
+}
+
+/* 플레이어 정보 */
+.player-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border-radius: 8px;
+}
+
+.player-info.active {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--accent-gold);
+}
+
+.player-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+.player-avatar.cho {
+  background: var(--accent-cho);
+  color: white;
+}
+
+.player-avatar.han {
+  background: var(--accent-han);
+  color: white;
+}
