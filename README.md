@@ -2,7 +2,7 @@
 
 Web-based Korean Chess (Janggi) AI with 5-Agent Orchestration Pipeline
 
-Updated: March 3, 2026 | Designer: Brian Lee
+Updated: March 4, 2026 | Designer: Brian Lee
 
 ---
 
@@ -262,7 +262,7 @@ Each agent wraps its work in a `BaseAgent.run()` method that provides timing, er
 | Component | File | Description |
 |-----------|------|-------------|
 | JanggiBoard | `components/JanggiBoard.tsx` | Interactive Canvas board with piece selection, move highlighting, drag support |
-| LeftPanel | `components/LeftPanel.tsx` | Player info, turn indicator, agent status cards, New Game / Undo buttons |
+| LeftPanel | `components/LeftPanel.tsx` | Player info, turn indicator, agent status LED indicators (Blue=enabled, Red=disabled, Blue+pulse=running), New Game / Undo buttons |
 | RightPanel | `components/RightPanel.tsx` | Win probability chart, AI evaluation breakdown, move analysis |
 
  Hooks
@@ -560,6 +560,7 @@ See [Self_test_report.md](Self_test_report.md) for the complete test report with
 - Tuple Move History: Move history uses lightweight tuples `(fr, fc, tr, tc, captured_ref)` instead of dicts for search performance
 - Canvas Rendering: Frontend uses HTML5 Canvas instead of React-Konva for a lighter footprint
 - Sequential Pipeline: 5 agents run sequentially (not parallel) to ensure each agent has access to previous agents' results
+- Agent LED Indicators: Each AI agent has a LED-style status indicator with glow effects — Red LED (disabled/error), Blue LED (enabled/success), Blue LED with pulse animation (currently running)
 
 ---
 

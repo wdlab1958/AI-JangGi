@@ -87,10 +87,15 @@ export default function LeftPanel({
         <div className="card-title">AI 에이전트 상태</div>
         {agents.map((agent) => {
           const result = agentResults?.[agent.id];
-          const status = aiThinking ? 'active' : (result?.status === 'success' ? 'active' : 'idle');
+          let ledClass = 'disabled';
+          if (aiThinking && result?.status !== 'success' && result?.status !== 'error') {
+            ledClass = 'running';
+          } else if (result?.status === 'success') {
+            ledClass = 'enabled';
+          }
           return (
             <div key={agent.id} className="agent-status">
-              <span className={`agent-dot ${status}`} />
+              <span className={`agent-led ${ledClass}`} />
               <span>{agent.icon} {agent.name}</span>
               {result?.time && (
                 <span style={{ marginLeft: 'auto', fontSize: '0.7rem', color: 'var(--text-secondary)' }}>
