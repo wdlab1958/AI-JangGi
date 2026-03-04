@@ -35,6 +35,8 @@ Janggi Champion AI is a full-stack web application for playing Korean Chess (Jan
 
 The AI reaches search depths of 6-7 plies within a 3-second time limit, processing approximately 37,000-39,000 nodes per second.
 
+![Janggi Champion AI - Game Screenshot](JangGi.png)
+
 ---
 
  2. Architecture
