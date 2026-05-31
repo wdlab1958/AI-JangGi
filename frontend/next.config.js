@@ -12,11 +12,11 @@ const nextConfig = {
       return [
         {
           source: '/api/:path*',
-          destination: 'http://localhost:8001/api/:path*',
+          destination: 'http://localhost:8007/api/:path*',
         },
         {
           source: '/ws/:path*',
-          destination: 'http://localhost:8001/ws/:path*',
+          destination: 'http://localhost:8007/ws/:path*',
         },
       ];
     },

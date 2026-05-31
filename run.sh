@@ -5,7 +5,7 @@ set -e
 
 PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
 FRONTEND_PORT=3005
-BACKEND_PORT=8001
+BACKEND_PORT=8007
 
 echo "======================================="
 echo "  장기 챔피언 AI - JANGGI CHAMPION"
