@@ -55,8 +55,10 @@ export default function JanggiBoard({
   const [hoverPos, setHoverPos] = useState<{ row: number; col: number } | null>(null);
   const [noMovesPos, setNoMovesPos] = useState<{ row: number; col: number } | null>(null);
 
-  // 보드를 뒤집어서 인간(초) 기물이 아래쪽에 표시되도록 한다
-  const displayRow = (logicalRow: number) => (ROWS - 1) - logicalRow;
+  // 인간 진영이 항상 화면 아래쪽에 오도록 보드를 뒤집는다.
+  // 인간=초(rows 0-2, 위쪽) → 뒤집음 / 인간=한(rows 7-9, 아래쪽) → 그대로
+  const flip = humanTeam !== 'han';
+  const displayRow = (logicalRow: number) => (flip ? (ROWS - 1) - logicalRow : logicalRow);
 
   // 논리 좌표 → 캔버스 좌표 (뒤집기 적용)
   const getCanvasPos = (row: number, col: number) => ({
@@ -70,7 +72,7 @@ export default function JanggiBoard({
     const dispRow = Math.round((canvasY - PADDING) / CELL_SIZE);
 
     if (dispRow >= 0 && dispRow < ROWS && col >= 0 && col < COLS) {
-      const logicalRow = (ROWS - 1) - dispRow;
+      const logicalRow = flip ? (ROWS - 1) - dispRow : dispRow;
       const pos = getCanvasPos(logicalRow, col);
       const dist = Math.sqrt((canvasX - pos.x) ** 2 + (canvasY - pos.y) ** 2);
       if (dist <= CELL_SIZE / 2) {

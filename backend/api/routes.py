@@ -98,6 +98,24 @@ async def make_move(game_id: str, req: MoveRequest):
     return {"human_move": human_result, "ai_move": None}
 
 
+@router.post("/game/{game_id}/ai-move")
+async def trigger_ai_move(game_id: str):
+    """POST /api/game/{id}/ai-move - AI 차례일 때 AI 수 1회 실행.
+
+    인간이 한(漢)을 선택하면 초(楚)=AI 가 선수이므로, 게임 시작 직후
+    프론트가 이 엔드포인트를 호출해 AI의 첫 수를 둔다.
+    """
+    orch = get_orchestrator()
+    state = orch.get_game_state(game_id)
+    if "error" in state:
+        raise HTTPException(status_code=404, detail=state["error"])
+    ai_result = await asyncio.to_thread(orch.ai_move, game_id)
+    if not ai_result.get("success"):
+        raise HTTPException(status_code=400,
+                            detail=ai_result.get("error", "AI move failed"))
+    return {"ai_move": ai_result}
+
+
 @router.get("/game/{game_id}/state")
 async def get_game_state(game_id: str):
     """GET /api/game/{id}/state - 현재 게임 상태 조회"""

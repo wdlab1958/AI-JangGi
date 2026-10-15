@@ -1,10 +1,12 @@
 """장기 오프닝 북 (Opening Book)
 
 초반 포진 정석을 저장하여 탐색 시간을 절약하고 정석적 플레이 보장.
-해시 기반 조회로 O(1) 매칭.
 
-형식: {(board_hash, team_hash): [(from_r, from_c, to_r, to_c, weight), ...]}
-weight가 높을수록 선호. 동일 weight이면 랜덤 선택.
+구현 방식: 수순 번호(move number)로 인덱싱한다.
+  {move_num: [{"from": (r,c), "to": (r,c), "name": str}, ...]}
+조회 시 현재 진행 수(move_count+1)에 해당하는 정석 후보 중
+'현 보드에서 실제 합법수'인 것만 추려 랜덤 선택한다(합법성으로 포지션 정합성 보장).
+초반 MAX_BOOK_MOVES 수까지만 적용하고 이후에는 탐색 엔진을 사용한다.
 """
 import random
 from typing import Optional

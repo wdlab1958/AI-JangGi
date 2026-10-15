@@ -4,11 +4,13 @@ import { GameState } from '../hooks/useGame';
 interface RightPanelProps {
   gameState: GameState | null;
   aiAnalysis: any;
+  finalReport?: any;   // 게임 종료 시 /report 결과
 }
 
-export default function RightPanel({ gameState, aiAnalysis }: RightPanelProps) {
+export default function RightPanel({ gameState, aiAnalysis, finalReport }: RightPanelProps) {
   const chartRef = useRef<HTMLCanvasElement>(null);
   const winHistoryRef = useRef<number[]>([]);
+  const gameIdRef = useRef<string | null>(null);
 
   const evaluation = gameState?.evaluation || {};
   const report = aiAnalysis?.report || {};
@@ -16,6 +18,16 @@ export default function RightPanel({ gameState, aiAnalysis }: RightPanelProps) {
   const dashboard = report?.dashboard || {};
   const aiThinking = report?.ai_thinking || [];
   const winProb = aiAnalysis?.win_probability ?? gameState?.win_probability ?? 50;
+
+  // G22: 새 게임(game_id 변경) 시 승률 히스토리 초기화 → 이전 게임 곡선 잔존 방지
+  useEffect(() => {
+    const gid = gameState?.game_id ?? null;
+    if (gid !== gameIdRef.current) {
+      gameIdRef.current = gid;
+      winHistoryRef.current = [];
+      drawChart();
+    }
+  }, [gameState?.game_id]);
 
   // 승률 히스토리 업데이트
   useEffect(() => {
@@ -190,6 +202,49 @@ export default function RightPanel({ gameState, aiAnalysis }: RightPanelProps) {
           </div>
         )}
       </div>
+
+      {/* 경기 종료 보고서 (G2) */}
+      {finalReport && (
+        <div className="card">
+          <div className="card-title">경기 종료 보고서</div>
+          <div style={{ fontSize: '0.8rem', display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span>결과</span>
+              <strong style={{
+                color: finalReport.result === 'win' ? 'var(--success)' :
+                       finalReport.result === 'loss' ? 'var(--danger)' : 'var(--text-primary)',
+              }}>
+                {finalReport.result === 'win' ? 'AI 승' :
+                 finalReport.result === 'loss' ? 'AI 패' : '무승부'}
+              </strong>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span>총 수</span><span>{finalReport.total_moves ?? '-'}수</span>
+            </div>
+            {finalReport.final_report?.performance_metrics && (
+              <>
+                <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-secondary)' }}>
+                  <span>평균 탐색깊이</span>
+                  <span>{finalReport.final_report.performance_metrics.avg_depth ?? '-'}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-secondary)' }}>
+                  <span>평균 사고시간</span>
+                  <span>{finalReport.final_report.performance_metrics.avg_think_time ?? '-'}s</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-secondary)' }}>
+                  <span>총 탐색노드</span>
+                  <span>{(finalReport.final_report.performance_metrics.total_nodes ?? 0).toLocaleString()}</span>
+                </div>
+              </>
+            )}
+            {finalReport.stats && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4, borderTop: '1px solid var(--border-color)', paddingTop: 4 }}>
+                <span>누적 ELO</span><span>{finalReport.stats.elo_rating ?? 1500}</span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

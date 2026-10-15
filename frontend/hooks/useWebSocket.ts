@@ -14,9 +14,12 @@ export function useWebSocket(gameId: string | null) {
   const connect = useCallback(() => {
     if (!gameId) return;
 
+    // 동일 출처(same-origin)로 연결. 개발 시 Next dev 프록시가 /ws → 백엔드(8007)로
+    // 전달하고, 프로덕션에서는 FastAPI 가 직접 서빙하므로 포트 하드코딩이 불필요하다.
+    // (이전: ':8001' 하드코딩 — 실제 백엔드는 8007 이라 항상 연결 실패하던 버그, G18)
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const host = window.location.hostname;
-    const ws = new WebSocket(`${protocol}//${host}:8001/ws/${gameId}`);
+    const host = window.location.host; // hostname:port
+    const ws = new WebSocket(`${protocol}//${host}/ws/${gameId}`);
 
     ws.onopen = () => {
       setConnected(true);

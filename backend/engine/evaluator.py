@@ -117,6 +117,10 @@ _EG_KING_CENTER_BONUS = 3.0   # 왕의 중앙 위치 보너스
 _EG_PAWN_ADVANCE_BONUS = 2.0  # 졸 전진 보너스
 _EG_CAR_ACTIVITY = 1.5        # 차의 활동성 보너스
 
+# 기동성(mobility) 스케일: (내 합법수 - 상대 합법수) * 스케일
+# 다른 구성요소(material/position/king_safety)와 비슷한 스케일로 맞춤
+_MOBILITY_SCALE = 0.1
+
 
 class Evaluator:
     """초고속 장기 판면 평가기 - 단일 패스"""
@@ -192,6 +196,12 @@ class Evaluator:
                     trow = (9 - r) if p.team is _HAN else r
                     score += sign * wp * table[trow][c]
 
+                # 종반 졸 전진 보너스 (2차 스캔 제거 → 단일 패스 통합)
+                if is_endgame and pt is _PAWN:
+                    advance = (r - 3) if p.team is not _HAN else (6 - r)
+                    if advance > 0:
+                        score += sign * _EG_PAWN_ADVANCE_BONUS * advance
+
                 # King Safety
                 if is_mine:
                     if pt is _CAR:
@@ -226,36 +236,12 @@ class Evaluator:
 
         score += wk * (my_ks - en_ks)
 
-        # ── 종반전 전략 보너스 ──
+        # ── 종반전 전략 보너스 (왕 중앙화) — 졸 전진은 위 단일 패스에 통합됨 ──
         if is_endgame:
             # 왕 중앙화 보너스 (종반에서 왕이 적극적으로 활동)
             my_king_center = 4.0 - abs(my_kc - 4) * 0.5
             en_king_center = 4.0 - abs(en_kc - 4) * 0.5
             score += _EG_KING_CENTER_BONUS * (my_king_center - en_king_center)
-
-            # 졸 전진 보너스 (적진 깊숙이 진입한 졸)
-            for r in range(10):
-                row = grid[r]
-                for c in range(9):
-                    p = row[c]
-                    if p is None or p.piece_type is not _PAWN:
-                        continue
-                    is_mine = (p.team is team)
-                    if is_mine:
-                        # CHO 졸은 row 클수록 전진, HAN 졸은 row 작을수록 전진
-                        if p.team is Team.CHO:
-                            advance = r - 3  # 초기 위치 row 3
-                        else:
-                            advance = 6 - r  # 초기 위치 row 6
-                        if advance > 0:
-                            score += _EG_PAWN_ADVANCE_BONUS * advance
-                    else:
-                        if p.team is Team.CHO:
-                            advance = r - 3
-                        else:
-                            advance = 6 - r
-                        if advance > 0:
-                            score -= _EG_PAWN_ADVANCE_BONUS * advance
 
         return score
 
@@ -270,6 +256,11 @@ class Evaluator:
         is_endgame = phase == "endgame" or remaining <= 14
         is_late = remaining <= 20
         enemy = Team.HAN if team == Team.CHO else Team.CHO
+
+        # Mobility (실제 합법수 차이) — G6 수정: 0.0 하드코딩 제거
+        my_mob = len(board.get_all_valid_moves(team))
+        en_mob = len(board.get_all_valid_moves(enemy))
+        mobility = round((my_mob - en_mob) * _MOBILITY_SCALE, 2)
 
         # Material
         my_mat = 0.0
@@ -333,12 +324,13 @@ class Evaluator:
             "total": round(total, 2),
             "material": round(material, 2),
             "position": round(position * 0.01, 2),
-            "mobility": 0.0,
+            "mobility": mobility,
             "king_safety": round(king_safety, 2),
+            "mobility_detail": {"my_moves": my_mob, "enemy_moves": en_mob},
             "weighted": {
                 "material": round(wm * material, 2),
                 "position": round(wp * position, 2),
-                "mobility": 0.0,
+                "mobility": mobility,
                 "king_safety": round(wk * king_safety, 2),
             },
         }

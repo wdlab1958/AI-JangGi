@@ -1,7 +1,7 @@
 import React, { useEffect, useCallback, useState } from 'react';
 import Head from 'next/head';
 import dynamic from 'next/dynamic';
-import { useGame } from '../hooks/useGame';
+import { useGame, GameSettings, DEFAULT_SETTINGS } from '../hooks/useGame';
 import LeftPanel from '../components/LeftPanel';
 import RightPanel from '../components/RightPanel';
 
@@ -25,6 +25,12 @@ export default function Home() {
     loading,
     aiThinking,
     lastAiAnalysis,
+    error,
+    clearError,
+    moveHistory,
+    report,
+    stats,
+    refreshStats,
     createGame,
     makeMove,
     getValidMoves,
@@ -33,13 +39,17 @@ export default function Home() {
 
   const [agentResults, setAgentResults] = useState<any>(null);
   const [lastAiMove, setLastAiMove] = useState<{ from: [number, number]; to: [number, number]; team: string } | null>(null);
+  const [settings, setSettings] = useState<GameSettings>(DEFAULT_SETTINGS);
+
+  const humanTeam = settings.aiTeam === 'han' ? 'cho' : 'han';
 
   // 초기 게임 생성 (StrictMode 중복 방지)
   const initialized = React.useRef(false);
   useEffect(() => {
     if (initialized.current) return;
     initialized.current = true;
-    createGame();
+    createGame(DEFAULT_SETTINGS);
+    refreshStats();
   }, []);
 
   // AI 분석 결과에서 에이전트 결과 + 마지막 수 추출
@@ -52,10 +62,11 @@ export default function Home() {
       setLastAiMove({
         from: m.from as [number, number],
         to: m.to as [number, number],
-        team: m.piece?.team || 'han',
+        // G21: AI 팀을 'han' 으로 가정하지 않고 실제 기물 팀(없으면 설정상 AI 팀)에서 도출
+        team: m.piece?.team || settings.aiTeam,
       });
     }
-  }, [lastAiAnalysis]);
+  }, [lastAiAnalysis, settings.aiTeam]);
 
   const handleMove = useCallback(async (
     fromRow: number, fromCol: number,
@@ -69,10 +80,11 @@ export default function Home() {
   }, [getValidMoves]);
 
   const handleNewGame = useCallback(async () => {
-    await createGame();
     setAgentResults(null);
     setLastAiMove(null);
-  }, [createGame]);
+    await createGame(settings);
+    refreshStats();
+  }, [createGame, settings, refreshStats]);
 
   const handleUndo = useCallback(async () => {
     await undoMove();
@@ -87,17 +99,40 @@ export default function Home() {
       </Head>
 
       <div className="app-container">
-        {/* 좌측 패널: 플레이어 정보, 에이전트 상태, 경기 기록 */}
+        {/* 좌측 패널: 플레이어 정보, 에이전트 상태, 경기 기록, 설정 */}
         <LeftPanel
           gameState={gameState}
           aiThinking={aiThinking}
           agentResults={agentResults}
+          moveHistory={moveHistory}
+          stats={stats}
+          settings={settings}
+          humanTeam={humanTeam}
+          onSettingsChange={setSettings}
           onNewGame={handleNewGame}
           onUndo={handleUndo}
         />
 
         {/* 중앙: 장기판 */}
         <div className="center-panel">
+          {error && (
+            <div
+              role="alert"
+              onClick={clearError}
+              style={{
+                marginBottom: 12,
+                padding: '8px 24px',
+                background: 'rgba(231, 76, 60, 0.18)',
+                border: '1px solid var(--danger)',
+                borderRadius: 8,
+                fontSize: '0.85rem',
+                color: 'var(--danger)',
+                cursor: 'pointer',
+              }}
+            >
+              ⚠ {error} <span style={{ opacity: 0.6 }}>(클릭하여 닫기)</span>
+            </div>
+          )}
           {aiThinking && (
             <div style={{
               marginBottom: 12,
@@ -115,7 +150,7 @@ export default function Home() {
           <JanggiBoard
             board={gameState?.board || emptyBoard}
             currentTurn={gameState?.current_turn || 'cho'}
-            humanTeam="cho"
+            humanTeam={humanTeam}
             isCheck={gameState?.is_check || false}
             lastMove={lastAiMove}
             onMove={handleMove}
@@ -150,6 +185,7 @@ export default function Home() {
         <RightPanel
           gameState={gameState}
           aiAnalysis={lastAiAnalysis}
+          finalReport={report}
         />
       </div>
     </>

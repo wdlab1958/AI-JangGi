@@ -1,14 +1,15 @@
+# 장기 챔피언 AI 백엔드 런타임 의존성
+# (실제로 import 되는 패키지만 유지 — G12: 미사용/오해소지 의존성 제거)
+#
+# 제거된 미사용 의존성 및 사유 (코드에서 import 0건):
+#   anthropic, chromadb, redis, psycopg2-binary
+#       → LLM/벡터DB/관계형DB 연동이 있는 듯한 오해를 유발하여 제거.
+#         실제로 에이전트는 결정적 파이썬 로직, 메모리는 파일기반 JSON 사용.
+#   python-socketio, aiohttp, python-multipart, httpx, python-docx, numpy
+#       → 어디서도 import 되지 않음.
+#
+# WebSocket(/ws/{game_id}) 엔드포인트가 존재하므로 uvicorn[standard]+websockets 유지.
 fastapi==0.115.6
 uvicorn[standard]==0.34.0
 websockets==14.1
-python-socketio==5.11.4
 pydantic==2.10.3
-anthropic==0.40.0
-chromadb==0.5.23
-redis==5.2.1
-psycopg2-binary==2.9.10
-python-docx==1.1.2
-numpy==2.2.1
-aiohttp==3.11.11
-python-multipart==0.0.18
-httpx==0.28.1

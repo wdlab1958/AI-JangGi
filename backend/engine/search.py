@@ -7,7 +7,10 @@ Negamax + Alpha-Beta + PVS + Quiescence Search + Null Move Pruning
 import time
 import math
 import random
+import logging
 from typing import Optional
+
+logger = logging.getLogger(__name__)
 from .board import Board, ZOBRIST_SIDE
 from .pieces import Piece, PieceType, Team
 from .evaluator import Evaluator
@@ -33,6 +36,12 @@ class TranspositionEntry:
 TT_MAX_SIZE = 2_000_000
 CHECKMATE_SCORE = 30000.0
 MAX_QUIESCENCE_DEPTH = 6
+
+# '무한대' 탐색 경계 — math.inf 대신 유한한 큰 값을 사용한다.
+# 이유: Null-Move 가지치기가 `-beta + 0.01` 을 계산하는데 beta=±inf 이면
+# 결과가 ±inf/NaN 이 되어 후보수 점수에 새어 들어가고(JSON 직렬화 500 유발),
+# AI 가 비유한 점수로 잘못 판단하게 된다. 유한 경계로 모든 산술을 안전하게 유지한다.
+INF = CHECKMATE_SCORE * 2  # 60000.0
 
 
 class SearchEngine:
@@ -88,7 +97,8 @@ class SearchEngine:
 
         all_moves = board.get_all_valid_moves(team)
         if not all_moves:
-            return {"move": None, "score": -math.inf, "depth": 0,
+            # 합법수 없음 = 패배. JSON 직렬화 안전을 위해 -inf 대신 유한한 패배 점수 사용.
+            return {"move": None, "score": -CHECKMATE_SCORE, "depth": 0,
                     "nodes": 0, "candidates": []}
 
         # 오프닝 북 조회 (초반에만)
@@ -134,11 +144,9 @@ class SearchEngine:
 
                     # Window 실패 시 전체 탐색
                     if result and (result["score"] <= alpha or result["score"] >= beta):
-                        result = self._search_root(board, team, depth,
-                                                    -math.inf, math.inf)
+                        result = self._search_root(board, team, depth, -INF, INF)
                 else:
-                    result = self._search_root(board, team, depth,
-                                                -math.inf, math.inf)
+                    result = self._search_root(board, team, depth, -INF, INF)
 
                 if result and result["move"]:
                     best_result = result
@@ -149,6 +157,10 @@ class SearchEngine:
                 break
 
         if best_result is None:
+            logger.warning(
+                "find_best_move: iterative deepening produced no move "
+                "(team=%s, phase=%s, moves=%d) — falling back to random legal move",
+                team, phase, len(all_moves))
             p, tr, tc = random.choice(all_moves)
             best_result = {
                 "move": {"from": (p.row, p.col), "to": (tr, tc), "piece": p.to_dict()},
@@ -172,7 +184,7 @@ class SearchEngine:
         all_moves = self._order_moves(board, all_moves, team, depth)
         enemy = Team.HAN if team == Team.CHO else Team.CHO
 
-        best_score = -math.inf
+        best_score = -INF
         best_move = None
         candidates = []
         first = True
@@ -275,7 +287,7 @@ class SearchEngine:
         all_moves = self._order_moves(board, all_moves, team, depth, tt_move)
         enemy = Team.HAN if team == Team.CHO else Team.CHO
 
-        best_score = -math.inf
+        best_score = -INF
         best_move_coords = None
         flag = "upper"
         first = True
@@ -351,7 +363,7 @@ class SearchEngine:
             if not all_moves:
                 return -CHECKMATE_SCORE + self.current_depth
             enemy = Team.HAN if team == Team.CHO else Team.CHO
-            best = -math.inf
+            best = -INF
             for piece, tr, tc in all_moves:
                 fr, fc = piece.row, piece.col
                 board.move_piece(fr, fc, tr, tc)
@@ -500,6 +512,10 @@ class SearchEngine:
             return result
 
         # 불법수 감지 — 합법수 중 최선을 재선택
+        logger.warning(
+            "_validate_move: search returned ILLEGAL move %s (team=%s) — "
+            "substituting a legal move; this indicates a move-gen/search bug",
+            (fr, fc, tr, tc), team)
         # candidates에서 합법수 찾기
         for cand in result.get("candidates", []):
             cfr, cfc = cand["from"]
@@ -513,6 +529,7 @@ class SearchEngine:
                 return result
 
         # candidates에도 합법수 없으면 랜덤
+        logger.warning("_validate_move: no legal candidate found — random legal fallback")
         p, r, c = random.choice(all_moves)
         result["move"] = {
             "from": (p.row, p.col), "to": (r, c),

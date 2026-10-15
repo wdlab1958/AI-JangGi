@@ -1,19 +1,55 @@
 """장기 챔피언 AI - FastAPI 메인 서버"""
 import os
+import math
+import logging
 from fastapi import FastAPI, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from starlette.responses import FileResponse
+from starlette.responses import FileResponse, JSONResponse
 from pathlib import Path
 
 from .orchestrator.orchestrator import JanggiOrchestrator
 from .api.routes import router, set_orchestrator
 from .api.websocket_handler import websocket_endpoint
 
+logger = logging.getLogger(__name__)
+
+
+def _json_safe(o, path="$"):
+    """비유한 float(inf/nan)를 유한값으로 치환하여 JSON 직렬화 5xx 를 방지.
+
+    탐색 타임아웃 등 드문 경계에서 ±inf 점수가 응답에 새어 들어가면
+    표준 json.dumps 가 ValueError 를 던져 500 이 발생한다(견고성 위반).
+    여기서 안전하게 치환하고, 무엇을 고쳤는지 경고 로그로 남겨 원인 추적을 돕는다.
+    """
+    if isinstance(o, bool):
+        return o
+    if isinstance(o, float):
+        if math.isinf(o):
+            logger.warning("Sanitized non-finite float at %s: %r -> clamp", path, o)
+            return 1e9 if o > 0 else -1e9
+        if math.isnan(o):
+            logger.warning("Sanitized NaN at %s -> 0.0", path)
+            return 0.0
+        return o
+    if isinstance(o, dict):
+        return {k: _json_safe(v, f"{path}.{k}") for k, v in o.items()}
+    if isinstance(o, (list, tuple)):
+        return [_json_safe(v, f"{path}[{i}]") for i, v in enumerate(o)]
+    return o
+
+
+class SafeJSONResponse(JSONResponse):
+    """inf/nan 안전 처리 후 직렬화하는 응답 클래스."""
+    def render(self, content) -> bytes:
+        return super().render(_json_safe(content))
+
+
 app = FastAPI(
     title="장기 챔피언 AI",
     description="웹 기반 인간 대 AI 장기 게임 프로그램",
     version="1.0.0",
+    default_response_class=SafeJSONResponse,
 )
 
 # CORS 설정

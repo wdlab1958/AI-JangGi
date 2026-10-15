@@ -46,6 +46,18 @@ class MemoryManager:
             self._sync_to_long_term()
             self.short_term.reset_sync_counter()
 
+    def set_working_candidates(self, candidates: list):
+        """G10: Working Memory 후보수 채우기(이전엔 호출처가 없어 항상 공백)."""
+        self.working.set_candidates(candidates or [])
+
+    def set_working_threats(self, threats: list):
+        """G10: Working Memory 위협 기물 채우기."""
+        self.working.set_threats(threats or [])
+
+    def record_strategy_result(self, phase: str, strategy: str, success: bool):
+        """G10: Short-term 페이즈별 전략 성공/실패 기록(이전엔 호출처 없음)."""
+        self.short_term.record_strategy_result(phase, strategy, success)
+
     def _sync_to_long_term(self):
         """Short-term → Long-term 동기화"""
         profile = self.short_term.get_opponent_profile()
@@ -78,6 +90,18 @@ class MemoryManager:
             self.long_term.update_player_profile(
                 opponent_id, self.short_term.get_opponent_profile()
             )
+
+        # G9: 이번 경기의 페이즈별 전략 결과를 전략 패턴 라이브러리에 영구 저장
+        # (이전엔 save_strategy_pattern 호출처가 없어 patterns 디렉터리가 항상 비어 있었음)
+        self.long_term.save_strategy_pattern(
+            f"game_{game_id[:8]}",
+            {
+                "game_id": game_id,
+                "result": result,
+                "phase_strategies": self.short_term.phase_strategies,
+                "total_moves": len(self.short_term.move_sequence),
+            },
+        )
 
     def get_full_context(self) -> dict:
         """전체 메모리 컨텍스트 반환 (에이전트 입력용)"""

@@ -1,12 +1,16 @@
 """WebSocket 이벤트 핸들러
 
-이벤트:
-- game:move (Client → Server): {from, to, piece_type}
-- game:ai_move (Server → Client): {from, to, analysis, win_probability}
-- game:state_update (Server → Client): {board_state, turn, captured_pieces}
-- game:analysis_update (Server → Client): {agent_id, analysis_result, confidence}
-- game:janggun (Server → Client): {check_type, threatening_pieces}
-- game:end (Server → Client): {winner, reason, final_report}
+실제 송수신 이벤트 계약 (G20: 구현과 일치하도록 docstring 수정):
+- game:move                (Client→Server): {from_row, from_col, to_row, to_col} 또는 {from:[r,c], to:[r,c]}
+- game:valid_moves         (Client→Server): {row, col}
+- game:undo                (Client→Server): {}
+- game:valid_moves_response(Server→Client): {valid_moves, row, col}
+- game:ai_move             (Server→Client): {move, analysis, win_probability, pipeline_time}
+- game:state_update        (Server→Client): get_game_state() 전체 상태 dict
+- game:analysis_update     (Server→Client): {agent_id, status, time}
+- game:janggun             (Server→Client): {check_type, message}
+- game:end                 (Server→Client): finalize_game() 결과 (result, final_report, stats ...)
+- game:error               (Server→Client): {message}
 """
 import json
 import asyncio

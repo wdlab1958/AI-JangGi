@@ -179,6 +179,15 @@ class JanggiOrchestrator:
             is_opponent=False,
         )
 
+        # G10: Working/Short-term 메모리 실제 채우기(이전엔 항상 공백이던 경로)
+        self.memory.set_working_candidates(strategy_result.get("candidates", []))
+        self.memory.set_working_threats(risk_result.get("traps_detected", []))
+        applied_name = (usecase_result.get("applied_strategy", {}) or {}).get("name", "")
+        if applied_name:
+            # AI 관점 평가가 우세(>=0)이면 해당 전략을 성공으로 기록
+            self.memory.record_strategy_result(
+                game.phase.value, applied_name, evaluation["total"] >= 0)
+
         # 게임 종료 확인
         game._check_game_end()
         game._record_position()

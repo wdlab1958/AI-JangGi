@@ -185,27 +185,40 @@ class UseCaseDesigner(BaseAgent):
 
     def _predict_win_path(self, phase: str, strategy: dict,
                            strategy_result: dict) -> dict:
-        """승리 경로 예측"""
-        score = strategy_result.get("evaluation", {}).get("total", 0)
+        """승리 경로 예측.
+
+        하드코딩 문자열 대신 실제 보드 상태(남은 상대 기물 수)에서
+        예상 수순 범위를 동적으로 산출한다.
+        """
+        evaluation = strategy_result.get("evaluation", {})
+        score = evaluation.get("total", 0)
+        summary = strategy_result.get("board_summary", {})
+        enemy_count = summary.get("enemy_pieces_count", 16)
+        my_count = summary.get("my_pieces_count", 16)
+
+        # 남은 상대 기물이 적을수록 마무리까지 수순이 짧다(대략적 추정).
+        # 우세(score>0)이면 더 빠르게 수렴한다고 본다.
+        base = max(4, int(enemy_count * 0.8))
+        if score > 0:
+            base = max(3, int(base * 0.7))
+        lo, hi = base, base + 5
 
         if phase == "opening":
-            return {
-                "approach": "안정적 포진 완성 후 중반 공격 전환",
-                "estimated_turns": "15-20수 내 중반 진입",
-                "confidence": min(0.7, 0.5 + score * 0.02),
-            }
+            approach = "안정적 포진 완성 후 중반 공격 전환"
+            conf = min(0.7, 0.5 + score * 0.02)
         elif phase == "midgame":
-            return {
-                "approach": strategy.get("description", "유연한 대응"),
-                "estimated_turns": "10-15수 내 기물 우위 확보",
-                "confidence": min(0.8, 0.5 + score * 0.03),
-            }
+            approach = strategy.get("description", "유연한 대응")
+            conf = min(0.8, 0.5 + score * 0.03)
         else:
-            return {
-                "approach": "체크메이트 또는 기물 우위 마무리",
-                "estimated_turns": "5-10수 내 마무리 시도",
-                "confidence": min(0.9, 0.5 + score * 0.04),
-            }
+            approach = "체크메이트 또는 기물 우위 마무리"
+            conf = min(0.9, 0.5 + score * 0.04)
+
+        return {
+            "approach": approach,
+            "estimated_turns": f"{lo}-{hi}수 내 (상대 잔여 {enemy_count}, 아군 {my_count})",
+            "estimated_turns_range": [lo, hi],
+            "confidence": round(conf, 3),
+        }
 
     def _get_adjustments(self, strategy_result: dict, opponent_style: str) -> list:
         """전략 조정 권고사항"""

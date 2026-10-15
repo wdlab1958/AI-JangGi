@@ -173,29 +173,35 @@ class ReportGenerator(BaseAgent):
             "confidence": min(0.95, 0.5 + abs(strategy.get("evaluation", {}).get("total", 0)) * 0.05),
         })
 
-        # Agent 2: 사례 설계자
+        # Agent 2: 사례 설계자 — confidence 는 승리경로 예측 신뢰도에서 도출 (G8)
         applied = usecase.get("applied_strategy", {})
+        usecase_conf = usecase.get("win_path", {}).get("confidence", 0.5)
         thinking.append({
             "agent": "사례 설계자",
             "summary": f"{applied.get('name', '')} - {applied.get('reason', '')}",
-            "confidence": 0.8,
+            "confidence": round(float(usecase_conf), 3),
         })
 
         # Agent 3: 승패 분석가
         thinking.append({
             "agent": "승패 분석가",
             "summary": winloss.get("recommendation", "분석 중..."),
-            "confidence": winloss.get("win_probability", 50) / 100,
+            "confidence": round(winloss.get("win_probability", 50) / 100, 3),
         })
 
-        # Agent 4: 리스크 평가자
+        # Agent 4: 리스크 평가자 — confidence 는 risk_score 의 확신도에서 도출 (G8)
         grade = risk.get("risk_grade", "UNKNOWN")
         traps = risk.get("traps_detected", [])
         trap_msg = f" 함정 {len(traps)}건 탐지." if traps else ""
+        # risk_score 가 0/100 에 가까울수록 판정 확신이 높음. 함정 탐지 시 가산.
+        risk_score = risk.get("risk_score", 50)
+        risk_conf = 0.5 + abs(risk_score - 50) / 100.0
+        if traps:
+            risk_conf = min(0.98, risk_conf + 0.1)
         thinking.append({
             "agent": "리스크 평가자",
             "summary": f"리스크 등급: {grade}.{trap_msg}",
-            "confidence": 0.85,
+            "confidence": round(risk_conf, 3),
         })
 
         return thinking

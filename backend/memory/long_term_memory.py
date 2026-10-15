@@ -162,10 +162,24 @@ class LongTermMemory:
         return games
 
     def get_context(self) -> dict:
-        """장기 메모리 컨텍스트 반환"""
+        """장기 메모리 컨텍스트 반환.
+
+        G9 수정: 영구 저장된 상대 프로파일/최근 경기/전략 패턴을 실제로 읽어
+        에이전트 입력으로 환류한다(과거 write-only 였던 읽기 경로 활성화).
+        """
+        recent = self.get_recent_games(limit=5)
         return {
             "stats": self.get_stats(),
             "strategy_patterns_count": len(list(self.patterns_dir.glob("*.json"))),
             "player_profiles_count": len(list(self.players_dir.glob("*.json"))),
             "recent_games_count": len(list(self.games_dir.glob("*.json"))),
+            # 누적 상대 프로파일(이전 경기들에서 학습)
+            "persistent_opponent_profile": self.get_player_profile("current_opponent") or {},
+            # 최근 경기 결과 요약
+            "recent_results": [
+                {"game_id": g.get("game_id"), "result": g.get("result")}
+                for g in recent
+            ],
+            # 저장된 전략 패턴(승리 패턴 라이브러리)
+            "strategy_patterns": self.get_strategy_patterns()[:10],
         }

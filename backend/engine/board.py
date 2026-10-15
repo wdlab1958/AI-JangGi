@@ -370,13 +370,12 @@ class Board:
             nc = c + dc
             if 0 <= nc < self.COLS:
                 moves.append((r, nc))
-        # 궁성 대각선 전진 (적 궁성에서)
+        # 궁성 대각선 전진 (적 궁성에서). PALACE_DIAG 값은 이웃 절대좌표.
+        # 졸은 '전진' 방향(행 증감이 fwd와 일치)의 대각선으로만 이동 가능.
         if (r, c) in PALACE_DIAG:
-            for dr, dc_ in PALACE_DIAG[(r, c)]:
-                if (dr - r) == fwd or (dr - r) * fwd > 0:
-                    # 전진 방향의 대각선만
-                    if (dr - r) == fwd:
-                        moves.append((dr, dc_))
+            for tr, tc in PALACE_DIAG[(r, c)]:
+                if (tr - r) == fwd:   # 전진 방향 대각선만
+                    moves.append((tr, tc))
         return moves
 
     # ── 장군 / 빅장 / 외통 ──
