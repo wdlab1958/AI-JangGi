@@ -2,7 +2,7 @@
 
 Web-based Korean Chess (Janggi) AI with 5-Agent Orchestration Pipeline
 
-Updated: March 4, 2026 | Designer: Brian Lee
+Updated: October 15, 2026 | Designer: Brian Lee
 
 ---
 
@@ -21,6 +21,7 @@ Updated: March 4, 2026 | Designer: Brian Lee
 11. [Testing](11-testing)
 12. [Configuration](12-configuration)
 13. [Technical Details](13-technical-details)
+14. [Recent Updates (as of 2026-10-15)](14-recent-updates-as-of-2026-10-15)
 
 ---
 
@@ -118,7 +119,9 @@ The search engine implements multiple advanced techniques layered together:
 | Quiescence Search | Extends search at leaf nodes for captures and check escapes |
 | Move Validation | Post-search legality check prevents any invalid move from being played |
 | Repetition Detection | Returns draw score (0.0) for positions that repeat from game history |
-| Opening Book | Pre-computed opening moves for the first 6 moves (중앙졸진, 마진출, 상진출, etc.) |
+| Opening Book | Pre-computed opening moves for the first 6 moves (중앙졸진, 마진출, 상진출, etc.) — indexed by move number, not by position hash |
+| Finite Search Bounds | Alpha-beta bounds use a finite sentinel `INF = 60000` instead of `±math.inf`, so Null-Move arithmetic (`-beta + 0.01`) can never leak `inf`/`NaN` into candidate scores or API responses `(워킹트리 변경, 미커밋)` |
+| Logged Fallbacks | The random-legal-move fallback in `find_best_move` and the substitution in `_validate_move` now emit warning logs instead of silently hiding search bugs `(워킹트리 변경, 미커밋)` |
 
  3.3 Evaluation Function
 
@@ -129,7 +132,8 @@ Single-pass evaluator iterates the board grid once, computing three components s
 | Material | 1.0 | Piece values with phase adjustments (Cannon value decreases in endgame, Pawn value increases) |
 | Position | 0.004 | Pre-computed position score tables for each piece type |
 | King Safety | 0.8 | Proximity of attacking pieces to enemy king, defensive pieces around own king |
-| Endgame Bonus | (endgame only) | King centralization bonus, pawn advancement bonus for deep penetration |
+| Mobility | 0.1 per move | `(own legal moves - enemy legal moves) * 0.1`, exposed in `evaluate_detailed()` as `mobility` plus `mobility_detail {my_moves, enemy_moves}` (previously hard-coded to 0.0) `(워킹트리 변경, 미커밋)` |
+| Endgame Bonus | (endgame only) | King centralization bonus, pawn advancement bonus for deep penetration — now folded into the same single grid pass (the second full-grid scan was removed) `(워킹트리 변경, 미커밋)` |
 
 Piece values: King=0 (infinite), Car=13, Cannon=7, Horse=5, Elephant=3, Guard=3, Pawn=2
 
@@ -165,6 +169,7 @@ The AI uses a Native Sequential Orchestrator pattern with 5 specialized agents:
 - Classifies the current game situation (development, attack, defense, endgame)
 - Selects appropriate strategy templates
 - Provides tactical recommendations based on position type
+- Derives the predicted win path (expected move ranges) from the actual board state (remaining material) instead of fixed turn-range strings `(워킹트리 변경, 미커밋)`
 
  Agent 3: Win/Loss Analyst
 - Calculates win probability using sigmoid function on evaluation score
@@ -180,6 +185,7 @@ The AI uses a Native Sequential Orchestrator pattern with 5 specialized agents:
 - Combines analysis from all agents into a unified dashboard
 - Generates human-readable AI thinking summary
 - Produces final game reports with phase-by-phase analysis
+- `confidence` is derived from the win-path reliability and the risk score instead of fixed constants `(워킹트리 변경, 미커밋)`
 
  Pipeline Flow
 
@@ -199,17 +205,20 @@ Each agent wraps its work in a `BaseAgent.run()` method that provides timing, er
 - Current board state, last move, evaluation score
 - Recent 3 moves (deque)
 - Immediate context for agent decisions
+- `candidates` (from Strategy Analyst) and `threats` (traps detected by Risk Assessor) are now actually filled by the orchestrator every turn `(워킹트리 변경, 미커밋)`
 
  Short-Term Memory (per-game, in-memory)
 - Complete move history with evaluations
 - Phase transition records
 - Positional trend analysis
+- `phase_strategies` success counters recorded per phase via `record_strategy_result` `(워킹트리 변경, 미커밋)`
 
  Long-Term Memory (persistent, JSON files)
 - Game results and statistics (wins, losses, ELO)
-- Strategy patterns database
+- Strategy patterns database — now written on game finalization (the `patterns/` directory used to stay empty) `(워킹트리 변경, 미커밋)`
 - Player profiles
 - Stored in `data/long_term/` directory
+- Read path is live: `get_context()` feeds `persistent_opponent_profile`, the 5 most recent results and the top 10 strategy patterns back into the pipeline (previously write-only) `(워킹트리 변경, 미커밋)`
 
 ---
 
@@ -229,11 +238,14 @@ Each agent wraps its work in a `BaseAgent.run()` method that provides timing, er
 | POST | `/api/game/new` | Create new game |
 | GET | `/api/game/{id}/state` | Get current game state |
 | POST | `/api/game/{id}/move` | Make human move (triggers AI response) |
+| POST | `/api/game/{id}/ai-move` | Run one AI move when it is the AI's turn (used right after game creation when the human plays HAN, so the AI/CHO moves first) `(워킹트리 변경, 미커밋)` |
 | POST | `/api/game/{id}/valid-moves` | Get valid moves for a piece |
 | GET | `/api/game/{id}/analysis` | Get AI analysis results |
 | POST | `/api/game/{id}/undo` | Undo last move pair (human + AI) |
 | GET | `/api/game/{id}/report` | Get/finalize game report |
 | GET | `/api/stats` | Get global statistics |
+
+All responses go through `SafeJSONResponse`, which clamps any non-finite float (`inf`/`NaN`) and logs a warning instead of failing with a 500 during serialization `(워킹트리 변경, 미커밋)`. The dev backend listens on port **8007** (`run.sh`, `backend/main.py`, Next.js dev rewrites for `/api/*` and `/ws/*`).
 
  WebSocket Events
 
@@ -257,25 +269,27 @@ Each agent wraps its work in a `BaseAgent.run()` method that provides timing, er
 - Framework: Next.js 14.2.21 (Pages Router)
 - UI: React 18 + TypeScript
 - Board Rendering: HTML5 Canvas API
-- Charts: Chart.js + react-chartjs-2
+- Charts: drawn directly with the Canvas API (unused `chart.js`/`react-chartjs-2`/`konva`/`react-konva` dependencies were removed) `(워킹트리 변경, 미커밋)`
 
  Components
 
 | Component | File | Description |
 |-----------|------|-------------|
 | JanggiBoard | `components/JanggiBoard.tsx` | Interactive Canvas board with piece selection, move highlighting, drag support |
-| LeftPanel | `components/LeftPanel.tsx` | Player info, turn indicator, agent status LED indicators (Blue=enabled, Red=disabled, Blue+pulse=running), New Game / Undo buttons |
-| RightPanel | `components/RightPanel.tsx` | Win probability chart, AI evaluation breakdown, move analysis |
+| LeftPanel | `components/LeftPanel.tsx` | Player info, turn indicator, agent status LED indicators (Blue=enabled, Red=disabled, Blue+pulse=running), New Game / Undo buttons. Game settings card (my side CHO/HAN, AI difficulty = search depth, time limit, CHO/HAN formation), cumulative record card from `/api/stats` (games, W/L/D, ELO, win rate, streak) and a real move list (기보) `(워킹트리 변경, 미커밋)` |
+| RightPanel | `components/RightPanel.tsx` | Win probability chart, AI evaluation breakdown (now including mobility), move analysis. Game-over report card fetched from `/api/game/{id}/report` (avg depth, avg think time, total nodes, cumulative ELO); win-probability history resets when the game id changes `(워킹트리 변경, 미커밋)` |
 
  Hooks
 
 | Hook | File | Description |
 |------|------|-------------|
-| useGame | `hooks/useGame.ts` | Game state management, REST API calls, move logic |
-| useWebSocket | `hooks/useWebSocket.ts` | WebSocket connection, real-time event handling |
+| useGame | `hooks/useGame.ts` | Game state management, REST API calls, move logic. `GameSettings` passed to `createGame()`, automatic `/ai-move` when the AI has the first move, `moveHistory`, `report`, `stats` and an `error` state surfaced as a dismissible banner (undo of one full turn = 2 plies, 400 responses shown instead of ignored) `(워킹트리 변경, 미커밋)` |
+| useWebSocket | `hooks/useWebSocket.ts` | WebSocket connection, real-time event handling — connects same-origin (`window.location.host`) so the Next dev rewrite / FastAPI static serving handles routing; the former hard-coded `:8001` port is gone `(워킹트리 변경, 미커밋)` |
 
  Layout
 Three-column layout: Left Panel (player info) | Center (game board) | Right Panel (AI analysis)
+
+Board orientation follows the human's side, and AI move highlights use the configured AI team instead of assuming HAN `(워킹트리 변경, 미커밋)`.
 
 ---
 
@@ -329,7 +343,12 @@ JangGi/
 ├── tests/
 │   ├── test_engine.py              Engine unit tests (8 tests)
 │   ├── test_orchestrator.py        Orchestrator tests (5 tests)
-│   └── test_ai_diagnostic.py       AI diagnostic + self-play tests
+│   ├── test_ai_diagnostic.py       AI diagnostic + self-play tests
+│   └── integration/                (uncommitted) A/B · E2E · Chaos integration tests against a running backend
+│       ├── ab_test.py              Deep (depth 4 / 1.0s) vs shallow (depth 1 / 0.3s) AI-vs-AI strength test
+│       ├── e2e_test.py             Full REST flow: create → valid moves → move/AI reply → undo → analysis → report → stats
+│       └── chaos_test.py           Malformed input / out-of-range / concurrency injection, server must stay alive
+├── reports/                        (uncommitted) FINAL_REPORT.md, GAP_LIST.md (G1–G28), raw ab/e2e/chaos result JSON
 ├── data/
 │   └── long_term/                  Persistent game data
 │       ├── games/                  Game records
@@ -369,14 +388,14 @@ This will:
 1. Install Python dependencies
 2. Install Node.js dependencies
 3. Start the frontend dev server on port 3005
-4. Start the backend API on port 8001
+4. Start the backend API on port 8007
 
  Manual Setup
 
 Backend:
 ```bash
 pip3 install -r backend/requirements.txt
-python3 -m uvicorn backend.main:app --host 0.0.0.0 --port 8001
+python3 -m uvicorn backend.main:app --host 0.0.0.0 --port 8007
 ```
 
 Frontend:
@@ -400,8 +419,10 @@ docker-compose up --build
 | Service | URL |
 |---------|-----|
 | Frontend | http://localhost:3005 (dev) or http://localhost:3000 (Docker) |
-| Backend API | http://localhost:8001 (dev) or http://localhost:8000 (Docker) |
-| API Documentation | http://localhost:8001/docs (Swagger UI) |
+| Backend API | http://localhost:8007 (dev) or http://localhost:8000 (Docker) |
+| API Documentation | http://localhost:8007/docs (Swagger UI) |
+
+> Note: on a pyenv build of Python 3.12 `asyncio.run()` crashed with a segfault during the 2026-06-06 audit; the backend ran correctly with the system Python (`/usr/bin/python3`). Use the system interpreter if uvicorn dies on startup.
 
 ---
 
@@ -452,10 +473,17 @@ Content-Type: application/json
  Response: { "valid_moves": [[4,0], [3,1]] }
 ```
 
+ Trigger AI Move (AI has the first move) `(워킹트리 변경, 미커밋)`
+
+```bash
+POST /api/game/{game_id}/ai-move
+ Response: { ai_move: {...} }   404 if game not found, 400 if it is not the AI's turn
+```
+
  WebSocket Connection
 
 ```javascript
-const ws = new WebSocket('ws://localhost:8001/ws/{game_id}');
+const ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws/{game_id}`); // same-origin; dev rewrite forwards to :8007
 
 // Send move
 ws.send(JSON.stringify({
@@ -491,6 +519,18 @@ python3 -m tests.test_ai_diagnostic
 | `test_engine.py` | 8 | Board, pieces, moves, evaluator, search, game, check |
 | `test_orchestrator.py` | 5 | Game creation, pipeline, analysis, valid moves, stats |
 | `test_ai_diagnostic.py` | 8 | Eval symmetry, search symmetry, hash, tactics, perf, move validity |
+| `integration/ab_test.py` `(워킹트리 변경, 미커밋)` | 4 games | Deep vs shallow search; hypothesis "deeper search wins more" (last run: A 3W 0L 1D, NPS ~33k–37k) |
+| `integration/e2e_test.py` `(워킹트리 변경, 미커밋)` | 68 | Full REST flow incl. mobility measurement, human=HAN / AI-first flow, long-game `inf` serialization regression |
+| `integration/chaos_test.py` `(워킹트리 변경, 미커밋)` | 18 | Non-existent game, out-of-range coords, wrong-team piece, missing fields/broken JSON, undo at start, 50 games, concurrent requests |
+
+ Integration Tests (backend must be running on :8007)
+
+```bash
+python3 tests/integration/ab_test.py
+python3 tests/integration/e2e_test.py
+python3 tests/integration/chaos_test.py
+ Raw results are written to reports/{ab,e2e,chaos}_result.json
+```
 
  Self-Test Report
 
@@ -563,6 +603,18 @@ See [Self_test_report.md](Self_test_report.md) for the complete test report with
 - Canvas Rendering: Frontend uses HTML5 Canvas instead of React-Konva for a lighter footprint
 - Sequential Pipeline: 5 agents run sequentially (not parallel) to ensure each agent has access to previous agents' results
 - Agent LED Indicators: Each AI agent has a LED-style status indicator with glow effects — Red LED (disabled/error), Blue LED (enabled/success), Blue LED with pulse animation (currently running)
+
+---
+
+ 14. Recent Updates (as of 2026-10-15)
+
+- **2026-05-31 (committed)** — Dev backend port moved to **8007** (`run.sh`, `backend/main.py`, Next dev rewrites); README ports corrected accordingly.
+- **2026-06-06 (워킹트리 변경, 미커밋)** — Audit of 28 gaps (`reports/GAP_LIST.md`, 24 fixed / 4 accepted) with A/B · E2E · Chaos integration tests (`tests/integration/`, final run E2E 68/68, Chaos 18/18):
+  - UI: game settings (side, difficulty, time limit, formations), cumulative record card (`/api/stats`), real move list, game-over report card (`/api/game/{id}/report`), error banner, undo = one full turn surfaced, win-probability history reset per game, AI-team-aware highlights.
+  - API: new `POST /api/game/{id}/ai-move`; `SafeJSONResponse` clamps `inf`/`NaN`; WebSocket hook connects same-origin (no hard-coded port).
+  - Engine: real mobility term in the evaluator, endgame pawn bonus merged into the single pass, finite search bounds (`INF = 60000`), warning logs on random/substitution fallbacks, palace-pawn diagonal branch cleanup, docstrings of `opening_book`/`websocket_handler` aligned with behaviour.
+  - Agents/Memory: Use Case Designer win path derived from board state, Report Generator confidence derived from data, working `candidates`/`threats` and short-term `phase_strategies` filled, long-term `get_context()` read path (opponent profile, recent results, strategy patterns) and pattern persistence on finalize.
+  - Dependencies: unused `anthropic`/`chromadb`/`redis`/`psycopg2-binary`/`numpy`/`aiohttp`/`httpx`/`python-docx`/`python-multipart`/`python-socketio` removed from `requirements.txt`; `konva`/`react-konva`/`chart.js`/`react-chartjs-2` removed from `package.json`.
 
 ---
 
