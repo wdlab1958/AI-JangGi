@@ -195,6 +195,11 @@ class Game:
     def undo_move(self) -> dict:
         if self.move_count < 2:
             return {"success": False, "error": "Not enough moves to undo"}
+        # F1 (formal/ai-move-undo-race): 진행 중인 게임에서 AI 차례(= AI 수 대기/탐색 중)에는
+        # 되돌리기를 거부한다. 그렇지 않으면 current_turn=human 으로 덮어써 턴 패리티
+        # (Properties.tla P1)가 깨지고 사람이 연속 2수를 두게 된다. 종료된 게임은 허용(기존 동작).
+        if self.status == GameStatus.PLAYING and self.current_turn != self.human_team:
+            return {"success": False, "error": "Cannot undo while AI is thinking"}
 
         self.board.undo_move()
         self.board.undo_move()

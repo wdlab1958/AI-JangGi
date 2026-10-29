@@ -86,6 +86,11 @@ async def websocket_endpoint(websocket: WebSocket, game_id: str, orchestrator):
 
             elif event == "game:undo":
                 result = orchestrator.undo_move(game_id)
+                if not result.get("success"):
+                    # F1: 거부된 undo(AI 사고 중 등)를 클라이언트에 알린다 (fail-closed 가시화)
+                    await manager.send_to_game(game_id, "game:error", {
+                        "message": result.get("error", "Cannot undo"),
+                    })
                 state = orchestrator.get_game_state(game_id)
                 await manager.send_to_game(game_id, "game:state_update", state)
 

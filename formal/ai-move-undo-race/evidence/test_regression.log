@@ -1,0 +1,32 @@
+/home/ubuntu-02/.local/lib/python3.12/site-packages/pytest_asyncio/plugin.py:208: PytestDeprecationWarning: The configuration option "asyncio_default_fixture_loop_scope" is unset.
+The event loop scope for asynchronous fixtures will default to the fixture caching scope. Future versions of pytest-asyncio will default the loop scope for asynchronous fixtures to function scope. Set the default fixture loop scope explicitly in order to avoid unexpected behavior in the future. Valid fixture loop scopes are: "function", "class", "module", "package", "session"
+
+  warnings.warn(PytestDeprecationWarning(_DEFAULT_FIXTURE_LOOP_SCOPE_UNSET))
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-8.3.0, pluggy-1.6.0 -- /home/ubuntu-02/.pyenv/versions/3.12.11/bin/python3
+rootdir: /home/ubuntu-02/ai_project/JangGi
+plugins: asyncio-0.24.0, cov-7.0.0, langsmith-0.7.6, anyio-4.12.1
+asyncio: mode=Mode.STRICT, default_loop_scope=None
+collecting ... collected 13 items
+
+tests/test_engine.py::test_board_setup PASSED                            [  7%]
+tests/test_engine.py::test_piece_moves PASSED                            [ 15%]
+tests/test_engine.py::test_move_execution PASSED                         [ 23%]
+tests/test_engine.py::test_evaluator PASSED                              [ 30%]
+tests/test_engine.py::test_search_engine PASSED                          [ 38%]
+tests/test_engine.py::test_game_session PASSED                           [ 46%]
+tests/test_engine.py::test_check_detection PASSED                        [ 53%]
+tests/test_engine.py::test_all_valid_moves PASSED                        [ 61%]
+tests/test_orchestrator.py::test_orchestrator_create_game PASSED         [ 69%]
+tests/test_orchestrator.py::test_orchestrator_pipeline PASSED            [ 76%]
+tests/test_orchestrator.py::test_orchestrator_analysis PASSED            [ 84%]
+tests/test_orchestrator.py::test_orchestrator_valid_moves PASSED         [ 92%]
+tests/test_orchestrator.py::test_orchestrator_stats PASSED               [100%]
+
+=============================== warnings summary ===============================
+tests/test_orchestrator.py::test_orchestrator_create_game
+  /home/ubuntu-02/.local/lib/python3.12/site-packages/_pytest/python.py:163: PytestReturnNotNoneWarning: Expected None, but tests/test_orchestrator.py::test_orchestrator_create_game returned ('d5cbf60e-e093-452c-88b3-afe864ad9f91', <backend.orchestrator.orchestrator.JanggiOrchestrator object at 0x7e91f09dbdd0>), which will be an error in a future version of pytest.  Did you mean to use `assert` instead of `return`?
+    warnings.warn(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+======================== 13 passed, 1 warning in 0.03s =========================

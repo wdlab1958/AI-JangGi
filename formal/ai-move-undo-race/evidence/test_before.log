@@ -1,0 +1,189 @@
+/home/ubuntu-02/.local/lib/python3.12/site-packages/pytest_asyncio/plugin.py:208: PytestDeprecationWarning: The configuration option "asyncio_default_fixture_loop_scope" is unset.
+The event loop scope for asynchronous fixtures will default to the fixture caching scope. Future versions of pytest-asyncio will default the loop scope for asynchronous fixtures to function scope. Set the default fixture loop scope explicitly in order to avoid unexpected behavior in the future. Valid fixture loop scopes are: "function", "class", "module", "package", "session"
+
+  warnings.warn(PytestDeprecationWarning(_DEFAULT_FIXTURE_LOOP_SCOPE_UNSET))
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-8.3.0, pluggy-1.6.0 -- /home/ubuntu-02/.pyenv/versions/3.12.11/bin/python3
+rootdir: /home/ubuntu-02/ai_project/JangGi
+plugins: asyncio-0.24.0, cov-7.0.0, langsmith-0.7.6, anyio-4.12.1
+asyncio: mode=Mode.STRICT, default_loop_scope=None
+collecting ... collected 3 items
+
+tests/test_ai_move_undo_race.py::test_F1a_undo_during_ai_search_breaks_turn_parity FAILED [ 33%]
+tests/test_ai_move_undo_race.py::test_F1b_undo_then_human_move_during_ai_search_corrupts_record FAILED [ 66%]
+tests/test_ai_move_undo_race.py::test_F1c_concurrent_ai_move_calls_apply_two_ai_moves FAILED [100%]
+
+=================================== FAILURES ===================================
+______________ test_F1a_undo_during_ai_search_breaks_turn_parity _______________
+
+tmp_path = PosixPath('/tmp/pytest-of-ubuntu-02/pytest-53/test_F1a_undo_during_ai_search0')
+
+    def test_F1a_undo_during_ai_search_breaks_turn_parity(tmp_path):
+        """TLC trace MC_bug (8 steps): H, A, H, [ai_move in flight], Undo → turn=H but move_count=1.
+    
+        실코드: AI 가 '사고 중'(워커 스레드가 탐색 중)일 때 POST /api/game/{id}/undo.
+        """
+        orch, gid, game = _new_game(tmp_path)
+        _play_h_a_h(orch, gid, game)
+    
+        gate = _Gate()
+        _gate_first_negamax(orch.strategy_analyst.search_engine, gate)
+        worker = _AiWorker(orch, gid)
+        worker.start()
+        try:
+            assert gate.reached.wait(10), "search gate not reached (opening book? no search?)"
+            # 워커는 투기적 수 1개를 실제 보드에 올려 둔 채 멈춰 있다.
+            undo = orch.undo_move(gid)   # ← 이벤트 루프 스레드에서 들어온 undo (routes.py:139-146)
+    
+>           _assert_turn_parity(game, f"right after undo during AI search (undo={undo})")
+
+tests/test_ai_move_undo_race.py:153: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+game = <backend.engine.game.Game object at 0x75f3dbbe3110>
+context = "right after undo during AI search (undo={'success': True, 'board_state': [[{'type': 'car', 'team': 'cho', 'row': 0, '...am': 'han', 'row': 9, 'col': 8, 'captured': False, 'hanja': '車', 'value': 13}]], 'move_count': 1, 'phase': 'opening'})"
+
+    def _assert_turn_parity(game, context: str):
+        """P1 TurnParity (frozen)."""
+>       assert game.current_turn == _side_to_move(game.move_count), (
+            f"P1 TurnParity violated — {context}: move_count={game.move_count}, "
+            f"current_turn={game.current_turn.value}, "
+            f"expected={_side_to_move(game.move_count).value}")
+E       AssertionError: P1 TurnParity violated — right after undo during AI search (undo={'success': True, 'board_state': [[{'type': 'car', 'team': 'cho', 'row': 0, 'col': 0, 'captured': False, 'hanja': '車', 'value': 13}, {'type': 'horse', 'team': 'cho', 'row': 0, 'col': 1, 'captured': False, 'hanja': '馬', 'value': 5}, {'type': 'elephant', 'team': 'cho', 'row': 0, 'col': 2, 'captured': False, 'hanja': '象', 'value': 3}, {'type': 'guard', 'team': 'cho', 'row': 0, 'col': 3, 'captured': False, 'hanja': '士', 'value': 3}, None, {'type': 'guard', 'team': 'cho', 'row': 0, 'col': 5, 'captured': False, 'hanja': '士', 'value': 3}, {'type': 'elephant', 'team': 'cho', 'row': 0, 'col': 6, 'captured': False, 'hanja': '象', 'value': 3}, {'type': 'horse', 'team': 'cho', 'row': 0, 'col': 7, 'captured': False, 'hanja': '馬', 'value': 5}, {'type': 'car', 'team': 'cho', 'row': 0, 'col': 8, 'captured': False, 'hanja': '車', 'value': 13}], [None, None, None, None, {'type': 'king', 'team': 'cho', 'row': 1, 'col': 4, 'captured': False, 'hanja': '楚', 'value': 0}, None, None, None, None], [None, {'type': 'cannon', 'team': 'cho', 'row': 2, 'col': 1, 'captured': False, 'hanja': '包', 'value': 7}, None, None, None, None, None, {'type': 'cannon', 'team': 'cho', 'row': 2, 'col': 7, 'captured': False, 'hanja': '包', 'value': 7}, None], [None, None, {'type': 'pawn', 'team': 'cho', 'row': 3, 'col': 2, 'captured': False, 'hanja': '卒', 'value': 2}, None, {'type': 'pawn', 'team': 'cho', 'row': 3, 'col': 4, 'captured': False, 'hanja': '卒', 'value': 2}, None, {'type': 'pawn', 'team': 'cho', 'row': 3, 'col': 6, 'captured': False, 'hanja': '卒', 'value': 2}, None, {'type': 'pawn', 'team': 'cho', 'row': 3, 'col': 8, 'captured': False, 'hanja': '卒', 'value': 2}], [{'type': 'pawn', 'team': 'cho', 'row': 4, 'col': 0, 'captured': False, 'hanja': '卒', 'value': 2}, None, None, None, None, None, None, None, None], [None, None, None, None, None, None, None, None, None], [{'type': 'pawn', 'team': 'han', 'row': 6, 'col': 0, 'captured': False, 'hanja': '兵', 'value': 2}, None, {'type': 'pawn', 'team': 'han', 'row': 6, 'col': 2, 'captured': False, 'hanja': '兵', 'value': 2}, None, {'type': 'pawn', 'team': 'han', 'row': 6, 'col': 4, 'captured': False, 'hanja': '兵', 'value': 2}, None, {'type': 'pawn', 'team': 'han', 'row': 6, 'col': 6, 'captured': False, 'hanja': '兵', 'value': 2}, None, {'type': 'pawn', 'team': 'han', 'row': 6, 'col': 8, 'captured': False, 'hanja': '兵', 'value': 2}], [None, {'type': 'cannon', 'team': 'han', 'row': 7, 'col': 1, 'captured': False, 'hanja': '包', 'value': 7}, {'type': 'horse', 'team': 'han', 'row': 7, 'col': 2, 'captured': False, 'hanja': '馬', 'value': 5}, None, None, None, None, {'type': 'cannon', 'team': 'han', 'row': 7, 'col': 7, 'captured': False, 'hanja': '包', 'value': 7}, None], [None, None, None, None, {'type': 'king', 'team': 'han', 'row': 8, 'col': 4, 'captured': False, 'hanja': '漢', 'value': 0}, None, None, None, None], [{'type': 'car', 'team': 'han', 'row': 9, 'col': 0, 'captured': False, 'hanja': '車', 'value': 13}, None, {'type': 'elephant', 'team': 'han', 'row': 9, 'col': 2, 'captured': False, 'hanja': '象', 'value': 3}, {'type': 'guard', 'team': 'han', 'row': 9, 'col': 3, 'captured': False, 'hanja': '士', 'value': 3}, None, {'type': 'guard', 'team': 'han', 'row': 9, 'col': 5, 'captured': False, 'hanja': '士', 'value': 3}, {'type': 'elephant', 'team': 'han', 'row': 9, 'col': 6, 'captured': False, 'hanja': '象', 'value': 3}, {'type': 'horse', 'team': 'han', 'row': 9, 'col': 7, 'captured': False, 'hanja': '馬', 'value': 5}, {'type': 'car', 'team': 'han', 'row': 9, 'col': 8, 'captured': False, 'hanja': '車', 'value': 13}]], 'move_count': 1, 'phase': 'opening'}): move_count=1, current_turn=cho, expected=han
+E       assert <Team.CHO: 'cho'> == <Team.HAN: 'han'>
+E        +  where <Team.CHO: 'cho'> = <backend.engine.game.Game object at 0x75f3dbbe3110>.current_turn
+E        +  and   <Team.HAN: 'han'> = _side_to_move(1)
+E        +    where 1 = <backend.engine.game.Game object at 0x75f3dbbe3110>.move_count
+
+tests/test_ai_move_undo_race.py:69: AssertionError
+------------------------------ Captured log call -------------------------------
+WARNING  backend.engine.search:search.py:515 _validate_move: search returned ILLEGAL move (9, 1, 7, 2) (team=Team.HAN) — substituting a legal move; this indicates a move-gen/search bug
+________ test_F1b_undo_then_human_move_during_ai_search_corrupts_record ________
+
+tmp_path = PosixPath('/tmp/pytest-of-ubuntu-02/pytest-53/test_F1b_undo_then_human_move_0')
+
+    def test_F1b_undo_then_human_move_during_ai_search_corrupts_record(tmp_path):
+        """TLC trace MC_bug_record (9 steps): ..., Undo, HumanMove → record <<H, H>> / 사람 수 소실, AI 2수.
+    
+        실코드: undo 가 받아들여져 '사람 차례'가 되고 사람이 한 수 더 두면, 멈춰 있던 탐색의
+        finally: board.undo_move() 가 그 사람 수를 보드에서 지우고 AI 가 수를 적용한다.
+        """
+        orch, gid, game = _new_game(tmp_path)
+        _play_h_a_h(orch, gid, game)
+    
+        gate = _Gate()
+        _gate_first_negamax(orch.strategy_analyst.search_engine, gate)
+        worker = _AiWorker(orch, gid)
+        worker.start()
+        try:
+            assert gate.reached.wait(10), "search gate not reached"
+            undo = orch.undo_move(gid)                       # during AI search
+            extra = orch.human_move(gid, 3, 2, 4, 2)         # 사람이 다시 둔다: 초 졸 (3,2)→(4,2)
+        finally:
+            gate.release.set()
+            worker.join(20)
+    
+        context = (f"after undo={undo.get('success')} ({undo.get('error')}), "
+                   f"extra human move={extra.get('success')} ({extra.get('error')}), "
+                   f"ai={worker.result and worker.result.get('success')} "
+                   f"({worker.result and worker.result.get('error')}), exc={worker.exc!r}")
+        assert worker.exc is None, context
+>       _assert_record_alternates(game, context)
+
+tests/test_ai_move_undo_race.py:186: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+game = <backend.engine.game.Game object at 0x75f3ddb604d0>
+context = 'after undo=True (None), extra human move=True (None), ai=True (None), exc=None'
+
+    def _assert_record_alternates(game, context: str):
+        """P2 RecordAlternates (frozen)."""
+        movers = _replay_movers(game)
+        expected = [_side_to_move(i) for i in range(len(movers))]
+        detail = (f"{context}: move_count={game.move_count}, "
+                  f"len(move_history)={len(game.board.move_history)}, "
+                  f"movers={[m.value if m else None for m in movers]}, "
+                  f"current_turn={game.current_turn.value}")
+        assert len(game.board.move_history) == game.move_count, "P2 violated (length): " + detail
+>       assert movers == expected, "P2 violated (record does not alternate CHO/HAN): " + detail
+E       AssertionError: P2 violated (record does not alternate CHO/HAN): after undo=True (None), extra human move=True (None), ai=True (None), exc=None: move_count=3, len(move_history)=3, movers=['cho', 'han', 'han'], current_turn=cho
+E       assert [<Team.CHO: '...m.HAN: 'han'>] == [<Team.CHO: '...m.CHO: 'cho'>]
+E         
+E         At index 2 diff: <Team.HAN: 'han'> != <Team.CHO: 'cho'>
+E         
+E         Full diff:
+E           [
+E               <Team.CHO: 'cho'>,
+E               <Team.HAN: 'han'>,...
+E         
+E         ...Full output truncated (5 lines hidden), use '-vv' to show
+
+tests/test_ai_move_undo_race.py:64: AssertionError
+_____________ test_F1c_concurrent_ai_move_calls_apply_two_ai_moves _____________
+
+tmp_path = PosixPath('/tmp/pytest-of-ubuntu-02/pytest-53/test_F1c_concurrent_ai_move_ca0')
+
+    def test_F1c_concurrent_ai_move_calls_apply_two_ai_moves(tmp_path):
+        """TLC trace MC_guard_only (10 steps): AiStartOk(a1), ..., AiStartOk(a2), ... → AI applies twice.
+    
+        실코드: POST /api/game/{id}/ai-move 가 첫 ai_move 가 끝나기 전에 다시 들어온다
+        (routes.py:112 두 번, 또는 routes.py:92 + :112). 둘 다 턴 확인(orchestrator.py:75)을 통과한다.
+        """
+        orch, gid, game = _new_game(tmp_path)
+        _play_h_a_h(orch, gid, game)
+    
+        gate = _Gate()
+        _gate_first_negamax(orch.strategy_analyst.search_engine, gate)
+        w1 = _AiWorker(orch, gid)
+        w1.start()
+        try:
+            assert gate.reached.wait(10), "search gate not reached"
+            w2 = _AiWorker(orch, gid)      # 두 번째 ai_move, 첫 번째가 아직 탐색 중
+            w2.start()
+            w2.join(4)                     # bug: 완주하여 수를 적용 / fix: 락에서 대기
+        finally:
+            gate.release.set()
+            w1.join(20)
+        w2.join(20)
+    
+        results = [w.result for w in (w1, w2)]
+        context = (f"ai results={[(r and r.get('success'), r and r.get('error')) for r in results]}, "
+                   f"exc={[repr(w.exc) for w in (w1, w2)]}")
+>       _assert_record_alternates(game, context)
+
+tests/test_ai_move_undo_race.py:216: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+game = <backend.engine.game.Game object at 0x75f3dbc5f860>
+context = "ai results=[(True, None), (True, None)], exc=['None', 'None']"
+
+    def _assert_record_alternates(game, context: str):
+        """P2 RecordAlternates (frozen)."""
+        movers = _replay_movers(game)
+        expected = [_side_to_move(i) for i in range(len(movers))]
+        detail = (f"{context}: move_count={game.move_count}, "
+                  f"len(move_history)={len(game.board.move_history)}, "
+                  f"movers={[m.value if m else None for m in movers]}, "
+                  f"current_turn={game.current_turn.value}")
+        assert len(game.board.move_history) == game.move_count, "P2 violated (length): " + detail
+>       assert movers == expected, "P2 violated (record does not alternate CHO/HAN): " + detail
+E       AssertionError: P2 violated (record does not alternate CHO/HAN): ai results=[(True, None), (True, None)], exc=['None', 'None']: move_count=5, len(move_history)=5, movers=['cho', 'han', 'cho', 'han', 'han'], current_turn=cho
+E       assert [<Team.CHO: '...m.HAN: 'han'>] == [<Team.CHO: '...m.CHO: 'cho'>]
+E         
+E         At index 4 diff: <Team.HAN: 'han'> != <Team.CHO: 'cho'>
+E         
+E         Full diff:
+E           [
+E               <Team.CHO: 'cho'>,
+E               <Team.HAN: 'han'>,...
+E         
+E         ...Full output truncated (7 lines hidden), use '-vv' to show
+
+tests/test_ai_move_undo_race.py:64: AssertionError
+------------------------------ Captured log call -------------------------------
+WARNING  backend.engine.search:search.py:515 _validate_move: search returned ILLEGAL move (7, 4, 8, 4) (team=Team.HAN) — substituting a legal move; this indicates a move-gen/search bug
+=========================== short test summary info ============================
+FAILED tests/test_ai_move_undo_race.py::test_F1a_undo_during_ai_search_breaks_turn_parity
+FAILED tests/test_ai_move_undo_race.py::test_F1b_undo_then_human_move_during_ai_search_corrupts_record
+FAILED tests/test_ai_move_undo_race.py::test_F1c_concurrent_ai_move_calls_apply_two_ai_moves
+============================== 3 failed in 0.16s ===============================

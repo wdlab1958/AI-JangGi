@@ -1,0 +1,7 @@
+# WDLAB-STD-VERIFY-001 §4.3 — JangGi formal verification toolchain (2026-10-29)
+proof-skills = 0.1.1
+tla2tools    = v1.8.0 (TLC 2026.10.28)
+java         = OpenJDK 21.0.12.1 (Ubuntu 24.04)
+lean         = not installed   # L3 (W7) 승격은 후속 제안으로만 기록
+model        = claude-fable-5-1
+python-tests = /usr/bin/python3 3.12.3 또는 pyenv 3.12.x (단, F2 참조: ~/.pyenv/versions/3.12.11 빌드는 워커 스레드 asyncio 호출에서 세그폴트)

@@ -1,0 +1,17 @@
+== ai-move-undo-race : Three-Config gate (TLC_WORKERS=4) ==
+OK   MC.cfg             exit 0   (expected 0  ) fix ON (UseLock+UndoTurnGuard) must PASS — because two distinct states had the same fingerprint:
+OK   MC_bug.cfg         exit 12  (expected 12 ) fix OFF must FAIL (TurnParity) — 132 states generated, 91 distinct states found, 26 states left on queue.
+OK   MC_sanity.cfg      exit 12  (expected 12 ) reachability sanity must FAIL (NeverUndone) — 59 states generated, 51 distinct states found, 2 states left on queue.
+-- extra mutations / sanity --
+OK   MC_bug_record.cfg  exit 12  (expected 12 ) fix OFF, P2 only (RecordAlternates) — 215 states generated, 143 distinct states found, 49 states left on queue.
+OK   MC_lock_only.cfg   exit 12  (expected 12 ) lock only -> still FAIL (undo gap) — 76 states generated, 58 distinct states found, 2 states left on queue.
+OK   MC_guard_only.cfg  exit 12  (expected 12 ) guard only -> still FAIL (double ai_move) — 213 states generated, 137 distinct states found, 40 states left on queue.
+OK   MC_sanity2.cfg     exit 12  (expected 12 ) two ai_move in flight reachable — 26 states generated, 21 distinct states found, 6 states left on queue.
+== reproduction tests (must pass on fixed code) ==
+/home/ubuntu-02/.local/lib/python3.12/site-packages/pytest_asyncio/plugin.py:208: PytestDeprecationWarning: The configuration option "asyncio_default_fixture_loop_scope" is unset.
+The event loop scope for asynchronous fixtures will default to the fixture caching scope. Future versions of pytest-asyncio will default the loop scope for asynchronous fixtures to function scope. Set the default fixture loop scope explicitly in order to avoid unexpected behavior in the future. Valid fixture loop scopes are: "function", "class", "module", "package", "session"
+
+  warnings.warn(PytestDeprecationWarning(_DEFAULT_FIXTURE_LOOP_SCOPE_UNSET))
+...                                                                      [100%]
+3 passed in 4.13s
+RESULT: ALL EXPECTATIONS MET

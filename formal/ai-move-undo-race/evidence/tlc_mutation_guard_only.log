@@ -1,0 +1,133 @@
+TLC2 Version 2026.10.28.014557 (rev: 56d37a9)
+Running breadth-first search Model-Checking with fp 112 and seed 1030059837689294701 with 4 workers on 28 cores with 27305MB heap and 64MB offheap memory [pid: 949238] (Linux 6.14.0-37-generic amd64, Ubuntu 21.0.12.1 64bit, MSBDiskFPSet, DiskStateQueue).
+Parsing file /home/ubuntu-02/ai_project/JangGi/formal/ai-move-undo-race/tla/Spec.tla
+Parsing file /tmp/tlc-17163397070477607569/Naturals.tla (jar:file:/home/ubuntu-02/.cache/proof-skills/tla2tools.jar!/tla2sany/StandardModules/Naturals.tla)
+Parsing file /tmp/tlc-17163397070477607569/Sequences.tla (jar:file:/home/ubuntu-02/.cache/proof-skills/tla2tools.jar!/tla2sany/StandardModules/Sequences.tla)
+Parsing file /tmp/tlc-17163397070477607569/FiniteSets.tla (jar:file:/home/ubuntu-02/.cache/proof-skills/tla2tools.jar!/tla2sany/StandardModules/FiniteSets.tla)
+Parsing file /tmp/tlc-17163397070477607569/_TLCTrace.tla (jar:file:/home/ubuntu-02/.cache/proof-skills/tla2tools.jar!/tla2sany/StandardModules/_TLCTrace.tla)
+Parsing file /home/ubuntu-02/ai_project/JangGi/formal/ai-move-undo-race/tla/Properties.tla
+Parsing file /tmp/tlc-17163397070477607569/TLC.tla (jar:file:/home/ubuntu-02/.cache/proof-skills/tla2tools.jar!/tla2sany/StandardModules/TLC.tla)
+Parsing file /tmp/tlc-17163397070477607569/TLCExt.tla (jar:file:/home/ubuntu-02/.cache/proof-skills/tla2tools.jar!/tla2sany/StandardModules/TLCExt.tla)
+Parsing file /tmp/tlc-17163397070477607569/Integers.tla (jar:file:/home/ubuntu-02/.cache/proof-skills/tla2tools.jar!/tla2sany/StandardModules/Integers.tla)
+Semantic processing of module Naturals
+Semantic processing of module Sequences
+Semantic processing of module FiniteSets
+Semantic processing of module TLC
+Semantic processing of module Integers
+Semantic processing of module TLCExt
+Semantic processing of module _TLCTrace
+Semantic processing of module Properties
+Semantic processing of module Spec
+Linting of module TLCExt
+Linting of module _TLCTrace
+Linting of module Properties
+Linting of module Spec
+Starting... (2026-10-29 14:58:45)
+Computing initial states...
+Finished computing initial states: 1 distinct state generated at 2026-10-29 14:58:45.
+Error: Invariant TurnParity is violated.
+Error: The behavior up to this point is:
+State 1: <Initial predicate>
+/\ mc = 0
+/\ nHuman = 0
+/\ lock = "free"
+/\ hist = <<>>
+/\ nAi = 0
+/\ aipc = (a1 :> "idle" @@ a2 :> "idle")
+/\ turn = "H"
+/\ nUndo = 0
+
+State 2: <HumanMove line 48, col 5 to line 55, col 43 of module Spec>
+/\ mc = 1
+/\ nHuman = 1
+/\ lock = "free"
+/\ hist = <<"H">>
+/\ nAi = 0
+/\ aipc = (a1 :> "idle" @@ a2 :> "idle")
+/\ turn = "A"
+/\ nUndo = 0
+
+State 3: <AiStartOk(a1) line 61, col 5 to line 67, col 50 of module Spec>
+/\ mc = 1
+/\ nHuman = 1
+/\ lock = "free"
+/\ hist = <<"H">>
+/\ nAi = 1
+/\ aipc = (a1 :> "search" @@ a2 :> "idle")
+/\ turn = "A"
+/\ nUndo = 0
+
+State 4: <AiSearchPush(a1) line 79, col 5 to line 82, col 55 of module Spec>
+/\ mc = 1
+/\ nHuman = 1
+/\ lock = "free"
+/\ hist = <<"H", "S">>
+/\ nAi = 1
+/\ aipc = (a1 :> "unsearch" @@ a2 :> "idle")
+/\ turn = "A"
+/\ nUndo = 0
+
+State 5: <AiSearchPop(a1) line 86, col 5 to line 89, col 55 of module Spec>
+/\ mc = 1
+/\ nHuman = 1
+/\ lock = "free"
+/\ hist = <<"H">>
+/\ nAi = 1
+/\ aipc = (a1 :> "apply" @@ a2 :> "idle")
+/\ turn = "A"
+/\ nUndo = 0
+
+State 6: <AiStartOk(a2) line 61, col 5 to line 67, col 50 of module Spec>
+/\ mc = 1
+/\ nHuman = 1
+/\ lock = "free"
+/\ hist = <<"H">>
+/\ nAi = 2
+/\ aipc = (a1 :> "apply" @@ a2 :> "search")
+/\ turn = "A"
+/\ nUndo = 0
+
+State 7: <AiSearchPush(a2) line 79, col 5 to line 82, col 55 of module Spec>
+/\ mc = 1
+/\ nHuman = 1
+/\ lock = "free"
+/\ hist = <<"H", "S">>
+/\ nAi = 2
+/\ aipc = (a1 :> "apply" @@ a2 :> "unsearch")
+/\ turn = "A"
+/\ nUndo = 0
+
+State 8: <AiApply(a1) line 94, col 5 to line 100, col 39 of module Spec>
+/\ mc = 2
+/\ nHuman = 1
+/\ lock = "free"
+/\ hist = <<"H", "S", "A">>
+/\ nAi = 2
+/\ aipc = (a1 :> "idle" @@ a2 :> "unsearch")
+/\ turn = "H"
+/\ nUndo = 0
+
+State 9: <AiSearchPop(a2) line 86, col 5 to line 89, col 55 of module Spec>
+/\ mc = 2
+/\ nHuman = 1
+/\ lock = "free"
+/\ hist = <<"H", "S">>
+/\ nAi = 2
+/\ aipc = (a1 :> "idle" @@ a2 :> "apply")
+/\ turn = "H"
+/\ nUndo = 0
+
+State 10: <AiApply(a2) line 94, col 5 to line 100, col 39 of module Spec>
+/\ mc = 3
+/\ nHuman = 1
+/\ lock = "free"
+/\ hist = <<"H", "S", "A">>
+/\ nAi = 2
+/\ aipc = (a1 :> "idle" @@ a2 :> "idle")
+/\ turn = "H"
+/\ nUndo = 0
+
+214 states generated, 140 distinct states found, 41 states left on queue.
+The depth of the complete state graph search is 11.
+Finished in 00s at (2026-10-29 14:58:45)
+Trace exploration spec path: ./Spec_TTrace_1793253525.tla

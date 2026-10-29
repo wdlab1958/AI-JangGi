@@ -2,7 +2,17 @@
 
 Web-based Korean Chess (Janggi) AI with 5-Agent Orchestration Pipeline
 
-Updated: October 15, 2026 | Designer: Brian Lee
+Updated: October 29, 2026 | Designer: Brian Lee
+
+## 🔬 형식 검증 (Formal Verification) — Oct.29, 2026
+
+- **적용 표준**: WDLAB-STD-VERIFY-001 v1.0 (Unified WDLAB Proof-Skills Standard), proof-skills v0.1.1, TLA+/TLC (tla2tools v1.8.0, TLC 2026.10.28). 산출물은 [`formal/`](formal/) 에 추가(thin additive shell).
+- **Concern**: `ai-move-undo-race` — 워커 스레드(`asyncio.to_thread`)에서 돌아가는 AI 수(`orchestrator.ai_move`: 턴 확인 → **원본 보드 위** 투기적 탐색 → 수 적용)와 이벤트 루프 스레드의 `undo`/`move`/추가 `ai-move` 요청이 락 없이 같은 `Game` 을 변경하는 경합.
+- **Verdict**: **FIXED** (F1) + **BOUNDED-PASS (L2)** — 수정 후 모델 `MC.cfg` 경계 `AiThreads=2, MaxHuman=3, MaxAiCalls=3, MaxUndo=2` 에서 95 distinct states, depth 18, 반례 없음. 신뢰 기반: TLC 2026.10.28, 추상화 "보드 = 수 스택(H/A/S)", "탐색 = push 1회+pop 1회", undo/human_move 원자적(수정 ON 에서 락으로 실제 원자화), 사람=CHO 선수, 게임 종료 없음. 이 경계·추상화 밖(기물 합법성, 다중 게임 공유 싱글턴, 읽기 경합)은 검증되지 않았다.
+- **수정된 finding F1** (수정 전 코드에서 결정적 재현 `tests/test_ai_move_undo_race.py` 3건 실패 → 수정 후 통과): AI 사고 중 `POST /undo` 가 받아들여져 `current_turn`/`move_count` 패리티가 깨지고(P1), 사람이 연속 2수를 두거나 사람 수가 보드에서 사라지고 AI 가 2수를 두며(P2), 동시 `POST /ai-move` 2건이 모두 통과해 AI 가 2수를 둔다. 수정: 게임별 `threading.Lock`(`orchestrator.py`: `human_move`/`undo_move` 비블로킹 획득 → `"AI is thinking"`, `ai_move` 는 락을 쥔 채 실행) + `Game.undo_move` 가 진행 중 게임의 AI 차례에는 `"Cannot undo while AI is thinking"` 으로 거부 + WS `game:undo` 실패를 `game:error` 로 통지. 모델에서 락만/가드만 켜면 각각 다른 트레이스로 다시 실패함을 확인(두 요소 모두 필요).
+- **부수 발견(미수정, HITL)**: F2 이 호스트의 `~/.pyenv/versions/3.12.11` 인터프리터는 `asyncio.to_thread` 호출만으로 세그폴트(혼합 빌드) → `/usr/bin/python3` 사용 또는 pyenv 재설치 필요; F3 WS `game:end` 경로 `finalize_game` 2중 호출로 장기 통계 2중 집계 가능; F4 AI 탐색 중 `GET /state` 가 투기적 보드 노출; F5 3회 반복 무승부 off-by-one; F6 프론트 "무르기" 버튼이 AI 사고 중 활성; F7 이 README 의 `#` 문자가 모두 유실됨(제목·앵커·셸 주석).
+- **실행**: `./formal/run_all.sh --tests` (3-config 기대값 단언: `MC`=PASS, `MC_bug`=FAIL, `MC_sanity`=FAIL + 변이 2종 + 재현 테스트). 모델: `formal/ai-move-undo-race/tla/{Spec,Properties}.tla`, 증거: `formal/ai-move-undo-race/evidence/`, 기계 판독: `formal/findings.json`.
+- **보고서**: `formal/reports/2026-10-29-ai-move-undo-race.md` (사본: `~/ai_project/Proof-Skills/JangGi_ProofSkills_Report_2026-10-29.docx`).
 
 ---
 
@@ -608,6 +618,7 @@ See [Self_test_report.md](Self_test_report.md) for the complete test report with
 
  14. Recent Updates (as of 2026-10-15)
 
+- **2026-10-29 (formal)** — WDLAB proof-skills 형식 검증 `ai-move-undo-race`: AI 탐색 중 undo/move/2중 ai-move 경합 F1 FIXED (게임별 락 + undo 턴 가드), TLA+ 3-config + 재현 테스트 `tests/test_ai_move_undo_race.py` 추가. 상단 "형식 검증" 절 참조.
 - **2026-05-31 (committed)** — Dev backend port moved to **8007** (`run.sh`, `backend/main.py`, Next dev rewrites); README ports corrected accordingly.
 - **2026-06-06 (워킹트리 변경, 미커밋)** — Audit of 28 gaps (`reports/GAP_LIST.md`, 24 fixed / 4 accepted) with A/B · E2E · Chaos integration tests (`tests/integration/`, final run E2E 68/68, Chaos 18/18):
   - UI: game settings (side, difficulty, time limit, formations), cumulative record card (`/api/stats`), real move list, game-over report card (`/api/game/{id}/report`), error banner, undo = one full turn surfaced, win-probability history reset per game, AI-team-aware highlights.

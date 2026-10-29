@@ -4,6 +4,7 @@
 핵심 개선: 탐색 엔진의 최적수를 최우선, 에이전트 실패 시 복원력 강화.
 """
 import time
+import threading
 from typing import Optional
 
 from ..agents.strategy_analyst import StrategyAnalyst
@@ -28,6 +29,9 @@ class JanggiOrchestrator:
         self.report_generator = ReportGenerator()
         self.memory = MemoryManager(storage_dir=storage_dir)
         self.games: dict[str, Game] = {}
+        # F1 (formal/ai-move-undo-race): 게임별 뮤텍스. human_move/undo_move(이벤트 루프 스레드)와
+        # ai_move(asyncio.to_thread 워커)가 같은 Game/Board 를 동시에 변경하는 경합을 차단한다.
+        self._game_locks: dict[str, threading.Lock] = {}
 
     def create_game(self, cho_formation="내상외마", han_formation="내상외마",
                      ai_team="han", ai_depth=20, ai_time_limit=5.0) -> dict:
@@ -37,11 +41,19 @@ class JanggiOrchestrator:
             ai_team=team, ai_depth=ai_depth, ai_time_limit=ai_time_limit,
         )
         self.games[game.game_id] = game
+        self._game_locks[game.game_id] = threading.Lock()
         self.memory.init_game(game.game_id)
         self.winloss_analyst.reset()
         # 새 게임에서 TT 초기화
         self.strategy_analyst.search_engine.clear_tt()
         return game.get_state()
+
+    def _lock_for(self, game_id: str) -> threading.Lock:
+        """게임별 뮤텍스 (F1). create_game 에서 생성되지만 방어적으로 없으면 만든다."""
+        lock = self._game_locks.get(game_id)
+        if lock is None:
+            lock = self._game_locks.setdefault(game_id, threading.Lock())
+        return lock
 
     def human_move(self, game_id: str, from_row: int, from_col: int,
                     to_row: int, to_col: int) -> dict:
@@ -49,26 +61,42 @@ class JanggiOrchestrator:
         if not game:
             return {"success": False, "error": "Game not found"}
 
-        result = game.make_human_move(from_row, from_col, to_row, to_col)
+        # F1 (formal/ai-move-undo-race): 이벤트 루프 스레드에서 호출되므로 블로킹하지 않는다.
+        # AI 워커가 락을 들고 탐색 중이면 fail-closed 로 거부한다.
+        lock = self._lock_for(game_id)
+        if not lock.acquire(blocking=False):
+            return {"success": False, "error": "AI is thinking"}
+        try:
+            result = game.make_human_move(from_row, from_col, to_row, to_col)
 
-        if result["success"]:
-            evaluation = game.evaluator.evaluate(
-                game.board, game.ai_team, game.phase.value)
-            self.memory.update_turn(
-                board_state=game.board.to_matrix(),
-                move=result["move"],
-                phase=game.phase.value,
-                evaluation=evaluation,
-                is_opponent=True,
-            )
-        return result
+            if result["success"]:
+                evaluation = game.evaluator.evaluate(
+                    game.board, game.ai_team, game.phase.value)
+                self.memory.update_turn(
+                    board_state=game.board.to_matrix(),
+                    move=result["move"],
+                    phase=game.phase.value,
+                    evaluation=evaluation,
+                    is_opponent=True,
+                )
+            return result
+        finally:
+            lock.release()
 
     def ai_move(self, game_id: str) -> dict:
-        """AI 수 실행 - 5개 에이전트 파이프라인 (탐색 엔진 결과 최우선)"""
+        """AI 수 실행 - 5개 에이전트 파이프라인 (탐색 엔진 결과 최우선)
+
+        F1 (formal/ai-move-undo-race): 턴 확인 → 원본 보드 위 투기적 탐색 → 수 적용은 하나의
+        임계 구역이어야 한다. 게임별 락을 잡은 채 실행한다(워커 스레드이므로 블로킹 획득;
+        두 번째 ai_move 는 첫 번째가 끝난 뒤 턴 확인에서 "Not AI's turn" 으로 거부된다).
+        """
         game = self.games.get(game_id)
         if not game:
             return {"success": False, "error": "Game not found"}
+        with self._lock_for(game_id):
+            return self._ai_move_locked(game)
 
+    def _ai_move_locked(self, game: Game) -> dict:
         # 턴/상태 확인
         if game.status.value != "playing":
             return {"success": False, "error": "Game is not in playing state"}
@@ -253,7 +281,14 @@ class JanggiOrchestrator:
         game = self.games.get(game_id)
         if not game:
             return {"success": False, "error": "Game not found"}
-        return game.undo_move()
+        # F1 (formal/ai-move-undo-race): AI 워커가 보드를 쓰는 동안의 undo 는 거부(비블로킹).
+        lock = self._lock_for(game_id)
+        if not lock.acquire(blocking=False):
+            return {"success": False, "error": "Cannot undo while AI is thinking"}
+        try:
+            return game.undo_move()
+        finally:
+            lock.release()
 
     def get_game_state(self, game_id: str) -> dict:
         game = self.games.get(game_id)

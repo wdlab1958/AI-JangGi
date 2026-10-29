@@ -1,0 +1,187 @@
+{
+  "$schema_note": "proof-skills v0.1.1 skills/formal-verify/assets/findings.schema.json + WDLAB-STD-VERIFY-001 §10.4 extension fields",
+  "concern": "ai-move-undo-race",
+  "workflow": "W1",
+  "generated_at": "2026-10-29T15:30:00+09:00",
+  "repo_commit": "08f7acd0ee80da70d061b3f468055aaf9747da2b",
+  "summary": "FIXED (F1) + BOUNDED-PASS: with the per-game lock and the undo turn guard, TurnParity / RecordAlternates / MoverIsSideToMove hold for AiThreads=2, MaxHuman=3, MaxAiCalls=3, MaxUndo=2 (95 distinct states, depth 18); with the fix off TLC finds the undo-during-AI-turn trace in 8 steps and it reproduces deterministically in tests/test_ai_move_undo_race.py (3 tests fail before, pass after).",
+  "verdict": "FIXED",
+  "property": "P1 TurnParity, P2 RecordAlternates, P3 MoverIsSideToMove",
+  "bounds": { "ai_threads": 2, "max_human_moves": 3, "max_ai_calls": 3, "max_undo": 2, "states_generated": 126, "distinct_states": 95, "depth": 18 },
+  "trace_summary": "H1 -> ai_move(a1) check/search/apply A1 -> H2 -> [ai_move in flight] -> Undo accepted: pops 2, move_count=1, current_turn=human (P1 violated); then HumanMove accepted -> record <<H,H>> / search's finally pops the human move and AI applies (P2 violated: <<H,A,A>>); or two ai_move calls both pass the turn check (P2 violated: <<H,A,H,A,A>>, speculative move left on the board)",
+  "code_mapping": [
+    "backend/orchestrator/orchestrator.py:73-76 (turn check, not atomic with apply)",
+    "backend/orchestrator/orchestrator.py:145-197 (apply without re-check)",
+    "backend/agents/strategy_analyst.py:44 -> backend/engine/search.py:195-211 (speculative push/pop on the real game.board)",
+    "backend/engine/game.py:195-202 (undo_move: only guard is move_count >= 2; sets current_turn=human)",
+    "backend/api/routes.py:86-92,112,139-146; backend/api/websocket_handler.py:107-133,87-90 (event-loop callers vs asyncio.to_thread worker)"
+  ],
+  "reproduction": { "path": "tests/test_ai_move_undo_race.py", "fails_before_fix": true, "passes_after_fix": true },
+  "mutation_check": "fix reverted in model (MC_bug.cfg: UseLock=FALSE, UndoTurnGuard=FALSE) -> TurnParity violated, exit 12 (evidence/mutation.log); lock-only and guard-only mutations also fail (tlc_mutation_lock_only.log, tlc_mutation_guard_only.log)",
+  "evidence": [
+    "ai-move-undo-race/evidence/tlc_bug.log", "ai-move-undo-race/evidence/tlc_bug_trace.md",
+    "ai-move-undo-race/evidence/tlc_bug_record.log", "ai-move-undo-race/evidence/tlc_bug_record_trace.md",
+    "ai-move-undo-race/evidence/tlc_fixed.log", "ai-move-undo-race/evidence/tlc_fixed_after.log",
+    "ai-move-undo-race/evidence/tlc_sanity.log", "ai-move-undo-race/evidence/tlc_sanity2.log",
+    "ai-move-undo-race/evidence/tlc_mutation_lock_only.log", "ai-move-undo-race/evidence/tlc_mutation_guard_only.log",
+    "ai-move-undo-race/evidence/tlc_coverage.log", "ai-move-undo-race/evidence/mutation.log",
+    "ai-move-undo-race/evidence/test_before.log", "ai-move-undo-race/evidence/test_after.log",
+    "ai-move-undo-race/evidence/test_regression.log", "ai-move-undo-race/evidence/test_regression_ai_diagnostic.log",
+    "ai-move-undo-race/evidence/run_all.log", "ai-move-undo-race/evidence/patches/F1-ai-move-undo-race.diff"
+  ],
+  "trust_base_list": [
+    "TLC2 Version 2026.10.28.014557 (tla2tools v1.8.0), OpenJDK 21.0.12.1",
+    "abstraction: board = move stack Seq({H,A,S}); squares/legality not modeled",
+    "abstraction: one AI search = one speculative push + one pop",
+    "abstraction: Undo / HumanMove / AiApply are single atomic actions (exact under the lock; under-approximation without it)",
+    "assumption: human = CHO (first mover); no game end within the bound; CPython GIL makes single attribute writes atomic",
+    "reproduction harness: threading.Event gates at SearchEngine._negamax first call; logging.logAsyncioTasks=False (see F2)"
+  ],
+  "wdlab": {
+    "project": "JangGi (Janggi Champion AI)",
+    "level_achieved": "L2",
+    "hitl_approvals": ["G2: pending Brian review", "G7: pending Brian review (design choice: non-blocking reject vs queueing undo; WS game:error emission)"],
+    "risk_domain": "game-state-integrity",
+    "one_cycle_stage": "dev -> formal (W1) -> CI guard (W5, proposed)"
+  },
+  "scope": {
+    "modeled": [
+      "Game.current_turn / move_count / Board.move_history as one shared resource",
+      "HumanMove, Undo (event-loop thread), ai_move = check -> speculative push -> pop -> apply (worker thread, up to 2 concurrent invocations)",
+      "fix toggles UseLock (per-game threading.Lock) and UndoTurnGuard (reject undo while it is the AI's turn)"
+    ],
+    "abstracted": [
+      "piece positions, legality, captures (search abstracted to one push/pop pair)",
+      "undo / human_move / apply merged into single atomic steps",
+      "5-agent pipeline, memory, evaluation, WebSocket transport"
+    ],
+    "out_of_scope": [
+      "Janggi rules correctness, search algorithm quality",
+      "multi-game sharing of orchestrator singletons (CANDIDATES #3)",
+      "finalize_game idempotency (F3), read-side races (F4), repetition rule (F5), frontend (F6), README markup (F7), interpreter build defect (F2)"
+    ],
+    "assumptions": ["A1-A5 in CORRESPONDENCE.md"]
+  },
+  "properties": [
+    { "name": "TurnParity", "kind": "invariant", "statement": "(turn = \"H\") <=> (mc % 2 = 0)", "meaning": "the side to move always follows move_count parity (human first, alternate)", "source": "backend/engine/game.py:41,125-126,191-192; orchestrator.py:196-197", "frozen": true, "result": "holds", "tool": "TLC 2026.10.28", "bounds": "AiThreads={a1,a2}, MaxHuman=3, MaxAiCalls=3, MaxUndo=2, UseLock=UndoTurnGuard=TRUE", "evidence": "ai-move-undo-race/evidence/tlc_fixed.log" },
+    { "name": "RecordAlternates", "kind": "invariant", "statement": "AtRest => Len(hist) = mc /\\ \\A i : hist[i] = (IF i % 2 = 1 THEN \"H\" ELSE \"A\")", "meaning": "when no ai_move is in flight the move record has no speculative move, its length equals move_count and movers alternate human/AI", "source": "backend/engine/board.py:161; search.py:195-211; README.md:244", "frozen": true, "result": "holds", "tool": "TLC 2026.10.28", "bounds": "same", "evidence": "ai-move-undo-race/evidence/tlc_fixed.log" },
+    { "name": "MoverIsSideToMove", "kind": "action-property", "statement": "[][ (Len(hist') = Len(hist)+1 /\\ hist'[Len(hist')] # \"S\") => hist'[Len(hist')] = turn ]_pvars", "meaning": "every real move appended is made by the side whose turn it is at that moment", "source": "backend/engine/game.py:86; orchestrator.py:75", "frozen": true, "result": "holds", "tool": "TLC 2026.10.28", "bounds": "same", "evidence": "ai-move-undo-race/evidence/tlc_fixed.log" },
+    { "name": "TypeOK", "kind": "invariant", "frozen": false, "result": "holds", "tool": "TLC 2026.10.28", "bounds": "same", "evidence": "ai-move-undo-race/evidence/tlc_fixed.log" },
+    { "name": "NeverUndone (sanity, must fail)", "kind": "bounded-check", "frozen": false, "result": "violated", "tool": "TLC 2026.10.28", "bounds": "same", "evidence": "ai-move-undo-race/evidence/tlc_sanity.log" },
+    { "name": "NeverTwoAiInFlight (sanity, must fail)", "kind": "bounded-check", "frozen": false, "result": "violated", "tool": "TLC 2026.10.28", "bounds": "fix OFF", "evidence": "ai-move-undo-race/evidence/tlc_sanity2.log" }
+  ],
+  "findings": [
+    {
+      "id": "F1",
+      "title": "AI 탐색(워커 스레드) 중 undo / 사람 수 / 두 번째 ai_move 가 락 없이 같은 Game 을 변경 — 턴 패리티·기보 교대 불변식 위반",
+      "severity": "high",
+      "status": "fixed",
+      "property": "TurnParity, RecordAlternates",
+      "story": "사람이 H2 를 두면 서버는 current_turn=AI 로 바꾸고 asyncio.to_thread 로 ai_move 를 시작한다. AI 가 원본 보드 위에서 탐색하는 수 초 동안 프론트의 '무르기' 버튼은 활성 상태다. undo 가 들어오면 Game.undo_move 는 move_count>=2 만 확인하고 스택에서 2개(투기적 수 S 와 H2)를 pop 한 뒤 current_turn=human 으로 덮어쓴다 → move_count=1 인데 사람 차례(P1 위반). 사람이 다시 두면(허용됨) 멈춰 있던 탐색의 finally: board.undo_move() 가 그 수를 보드에서 지우고 AI 가 수를 적용해 기록이 <<H, A, A>> 가 된다(P2 위반). 별도 경로로 POST /ai-move 가 겹치면 두 호출이 모두 턴 확인을 통과해 AI 가 연속 2수를 둔다.",
+      "trace": [
+        { "step": 1, "actor": "human", "action": "HumanMove", "code": "backend/engine/game.py:82-127", "changed": { "mc": "1", "hist": "<<H>>", "turn": "A" } },
+        { "step": 2, "actor": "worker a1", "action": "AiStartOk(a1)", "code": "backend/orchestrator/orchestrator.py:66-76", "changed": { "aipc[a1]": "search" } },
+        { "step": 3, "actor": "worker a1", "action": "AiSearchPush(a1)", "code": "backend/agents/strategy_analyst.py:44 -> search.py:195", "changed": { "hist": "<<H,S>>" } },
+        { "step": 4, "actor": "worker a1", "action": "AiSearchPop(a1)", "code": "backend/engine/search.py:210-211", "changed": { "hist": "<<H>>" } },
+        { "step": 5, "actor": "worker a1", "action": "AiApply(a1)", "code": "backend/orchestrator/orchestrator.py:145-197", "changed": { "mc": "2", "hist": "<<H,A>>", "turn": "H" } },
+        { "step": 6, "actor": "human", "action": "HumanMove", "code": "backend/engine/game.py:82-127", "changed": { "mc": "3", "hist": "<<H,A,H>>", "turn": "A" } },
+        { "step": 7, "actor": "event loop", "action": "Undo (accepted while it is the AI's turn)", "code": "backend/engine/game.py:195-227 via routes.py:139-146", "changed": { "mc": "1", "hist": "<<H>>", "turn": "H" }, "violation": true },
+        { "step": 8, "actor": "human", "action": "HumanMove (second consecutive human move)", "code": "backend/engine/game.py:82-127", "changed": { "mc": "2", "hist": "<<H,H>>", "turn": "A" }, "violation": true }
+      ],
+      "reproduction": { "test": "tests/test_ai_move_undo_race.py::test_F1a_undo_during_ai_search_breaks_turn_parity, ::test_F1b_undo_then_human_move_during_ai_search_corrupts_record, ::test_F1c_concurrent_ai_move_calls_apply_two_ai_moves", "result_before_fix": "fails", "result_after_fix": "passes" },
+      "fix": {
+        "summary": "orchestrator.py: per-game threading.Lock — human_move/undo_move acquire non-blocking (reject with 'AI is thinking' / 'Cannot undo while AI is thinking'), ai_move runs its whole check→search→apply under the lock (_ai_move_locked). game.py: undo_move rejects while status==PLAYING and current_turn!=human_team. websocket_handler.py: rejected game:undo is reported as game:error. No public API/signature change; only new 400 error strings.",
+        "diff": "ai-move-undo-race/evidence/patches/F1-ai-move-undo-race.diff",
+        "model_recheck": "passes",
+        "mutation_check": "fails-as-expected"
+      },
+      "evidence": ["ai-move-undo-race/evidence/tlc_bug.log", "ai-move-undo-race/evidence/tlc_bug_record.log", "ai-move-undo-race/evidence/tlc_mutation_guard_only.log", "ai-move-undo-race/evidence/test_before.log", "ai-move-undo-race/evidence/test_after.log", "ai-move-undo-race/evidence/mutation.log", "ai-move-undo-race/evidence/test_regression.log"]
+    },
+    {
+      "id": "F2",
+      "title": "[환경] 이 호스트의 기본 python3(pyenv ~/.pyenv/versions/3.12.11, 실제 3.12.3 혼합 빌드)는 asyncio.to_thread / 워커 스레드의 asyncio.current_task() 호출에서 세그폴트 → 서버가 /move 마다 죽는다",
+      "severity": "critical",
+      "status": "confirmed",
+      "property": "server liveness (out of model)",
+      "story": "pyenv shim python3 -> ~/.pyenv/versions/3.12.11: libpython 은 2026-08-31 빌드(sys.version 3.12.3)인데 lib-dynload/_asyncio*.so 는 2026-04-09 → ABI 불일치. `asyncio.run(asyncio.to_thread(lambda: 'ok'))` 만으로 exit 139. routes.py:92/112, websocket_handler.py:133 이 바로 그 패턴. /usr/bin/python3 3.12.3 은 정상. 재현 테스트 작성 중 pytest 프로세스가 죽어 발견(logging.LogRecord 의 asyncio.current_task()).",
+      "reproduction": { "test": "formal/ai-move-undo-race/repro/F2_segv_probe_worker_logging.py (python3 -I ...) ; evidence/F2_segv_probe.log probes A-E", "result_before_fix": "fails", "result_after_fix": "not-run" },
+      "fix": { "summary": "코드 수정 아님(HITL): pyenv 3.12.11 재설치(`pyenv uninstall 3.12.11 && pyenv install 3.12.11`) 또는 run.sh/docker 에서 /usr/bin/python3 고정. 임시로 tests/test_ai_move_undo_race.py 는 logging.logAsyncioTasks=False 로 하네스 크래시만 회피.", "model_recheck": "not-run", "mutation_check": "not-run" },
+      "evidence": ["ai-move-undo-race/evidence/F2_segv_probe.log"]
+    },
+    {
+      "id": "F3",
+      "title": "finalize_game 비멱등: WebSocket game:end 경로가 finalize_game 을 직접 호출하고 이후 GET /report(get_or_create_report) 가 다시 호출 → long_term record_game_result 2회(total_games/Elo 2중 집계)",
+      "severity": "medium",
+      "status": "suspected",
+      "property": "each game recorded exactly once",
+      "story": "websocket_handler.py:128,165 -> orchestrator.finalize_game (캐시 없음) -> memory.finalize_game -> long_term.record_game_result (+1 game, ±16 Elo). 프론트/다른 클라이언트가 GET /api/game/{id}/report 를 부르면 get_or_create_report 캐시 미스 -> finalize_game 재호출. 현재 프론트는 REST 만 쓰므로 WS 클라이언트에서만 노출. 정적 분석만, 미재현.",
+      "reproduction": { "result_before_fix": "not-reproduced" },
+      "fix": { "summary": "제안: websocket_handler 에서 get_or_create_report 사용(멱등 래퍼로 통일)." }
+    },
+    {
+      "id": "F4",
+      "title": "읽기 경합: AI 탐색 중 GET /state, valid-moves 가 투기적 수가 올라간 보드를 to_matrix() 로 노출",
+      "severity": "low",
+      "status": "suspected",
+      "property": "observed board = committed position",
+      "story": "routes.py:119-126 -> game.get_state() -> board.to_matrix()/evaluate_detailed 는 락 없이 원본 보드를 읽는다. 탐색이 push 한 수가 순간적으로 보인다. 상태 변경은 없음. 제안: get_game_state 도 락(비블로킹 실패 시 마지막 커밋 스냅샷 반환) 또는 탐색을 board.copy() 위에서 수행.",
+      "reproduction": { "result_before_fix": "not-reproduced" }
+    },
+    {
+      "id": "F5",
+      "title": "3회 반복 무승부 off-by-one 및 시작 포지션 키 side 불일치",
+      "severity": "low",
+      "status": "suspected",
+      "property": "repetition rule",
+      "story": "game.py:254-275 _check_game_end 가 _record_position 보다 먼저 _check_repetition(>=3) 을 평가하므로 같은 포지션의 4번째 출현에서 무승부가 선언된다. 또한 __init__ 의 첫 기록은 side=CHO(둘 차례)인데 이후 기록은 side=직전에 둔 쪽이라 시작 포지션 재출현은 다른 키로 집계된다.",
+      "reproduction": { "result_before_fix": "not-reproduced" }
+    },
+    {
+      "id": "F6",
+      "title": "프론트 '무르기' 버튼이 AI 사고 중에도 활성 (F1 의 사용자 측 유발 경로)",
+      "severity": "low",
+      "status": "confirmed",
+      "property": "UI fail-closed",
+      "story": "frontend/components/LeftPanel.tsx:245-247 disabled={!gameState || gameState.move_count < 2} — aiThinking 미반영(보드는 pages/index.tsx:158 에서 비활성). 백엔드 수정으로 이제 400 'Cannot undo while AI is thinking' 이 에러 배너로 표시된다. 제안: disabled 에 aiThinking 추가 후 frontend/out 재빌드.",
+      "reproduction": { "result_before_fix": "not-reproduced" }
+    },
+    {
+      "id": "F7",
+      "title": "README.md 의 '#' 문자가 모두 유실됨 (제목 마크업, 앵커 '(#1-overview)', 셸 주석)",
+      "severity": "low",
+      "status": "confirmed",
+      "property": "documentation integrity",
+      "story": "저장소 전 이력(초기 커밋 ec1e69e 포함, 8개 커밋 모두)에서 README.md 에 '^#' 로 시작하는 줄이 0개 — 최초 커밋 이전에 유실된 것으로 추정. ToC 앵커 '(1-overview)' 와 코드블록 내 셸 주석(' Unit tests')도 같은 증상. 이번 형식 검증 절은 올바른 마크다운으로 추가했으나 나머지 복원은 범위 외(HITL).",
+      "reproduction": { "result_before_fix": "not-reproduced" }
+    }
+  ],
+  "trust_base": {
+    "tla": {
+      "tool_version": "TLC2 Version 2026.10.28.014557 (rev: 56d37a9), tla2tools v1.8.0, OpenJDK 21.0.12.1",
+      "states_generated": 126,
+      "distinct_states": 95,
+      "depth": 18,
+      "sanity_checks": [
+        "MC_sanity.cfg NeverUndone violated (exit 12)",
+        "MC_sanity2.cfg NeverTwoAiInFlight violated (exit 12)",
+        "MC_bug.cfg fix OFF -> TurnParity violated in 8 steps (exit 12)",
+        "MC_bug_record.cfg -> RecordAlternates violated in 9 steps",
+        "MC_lock_only.cfg / MC_guard_only.cfg each still fail (both fix parts necessary)",
+        "-coverage 1: every action fires (HumanMove 16, AiStartOk 20, AiStartRejected 4, AiSearchPush 20, AiSearchPop 20, AiApply 7, Undo 7 distinct states)"
+      ]
+    }
+  },
+  "rerun": [
+    "cd ~/ai_project/JangGi && ./formal/run_all.sh --tests",
+    "cd ~/ai_project/JangGi/formal/ai-move-undo-race/tla && java -cp ~/.cache/proof-skills/tla2tools.jar tlc2.TLC -workers 4 -config MC_bug.cfg Spec.tla",
+    "cd ~/ai_project/JangGi && /usr/bin/python3 -m pytest tests/test_ai_move_undo_race.py -v",
+    "cd ~/ai_project/JangGi && python3 -I formal/ai-move-undo-race/repro/F2_segv_probe_worker_logging.py   # F2: exit 139 on the pyenv build, 0 on /usr/bin/python3"
+  ],
+  "next_steps": [
+    "W5: add ./formal/run_all.sh --tests to CI (paths: backend/**, formal/**); block merge on any config deviating from expectation",
+    "W4: with the per-game lock proven, the orchestrator's post-search re-validation (orchestrator.py:130-142) could be simplified — re-verify before removing",
+    "W7: promote TurnParity/RecordAlternates to Lean 4 (inductive invariant over an unbounded move sequence) once Lean is installed",
+    "F2: fix the interpreter build (HITL) before trusting any integration run on this host",
+    "F6: disable the undo button while aiThinking; F3: route WS game:end through get_or_create_report"
+  ]
+}

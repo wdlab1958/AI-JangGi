@@ -1,0 +1,175 @@
+TLC2 Version 2026.10.28.014557 (rev: 56d37a9)
+Running breadth-first search Model-Checking with fp 58 and seed 529844036850632488 with 4 workers on 28 cores with 27305MB heap and 64MB offheap memory [pid: 963436] (Linux 6.14.0-37-generic amd64, Ubuntu 21.0.12.1 64bit, MSBDiskFPSet, DiskStateQueue).
+Parsing file /home/ubuntu-02/ai_project/JangGi/formal/ai-move-undo-race/tla/Spec.tla
+Parsing file /tmp/tlc-1719880386215659859/Naturals.tla (jar:file:/home/ubuntu-02/.cache/proof-skills/tla2tools.jar!/tla2sany/StandardModules/Naturals.tla)
+Parsing file /tmp/tlc-1719880386215659859/Sequences.tla (jar:file:/home/ubuntu-02/.cache/proof-skills/tla2tools.jar!/tla2sany/StandardModules/Sequences.tla)
+Parsing file /tmp/tlc-1719880386215659859/FiniteSets.tla (jar:file:/home/ubuntu-02/.cache/proof-skills/tla2tools.jar!/tla2sany/StandardModules/FiniteSets.tla)
+Parsing file /tmp/tlc-1719880386215659859/_TLCTrace.tla (jar:file:/home/ubuntu-02/.cache/proof-skills/tla2tools.jar!/tla2sany/StandardModules/_TLCTrace.tla)
+Parsing file /home/ubuntu-02/ai_project/JangGi/formal/ai-move-undo-race/tla/Properties.tla
+Parsing file /tmp/tlc-1719880386215659859/TLC.tla (jar:file:/home/ubuntu-02/.cache/proof-skills/tla2tools.jar!/tla2sany/StandardModules/TLC.tla)
+Parsing file /tmp/tlc-1719880386215659859/TLCExt.tla (jar:file:/home/ubuntu-02/.cache/proof-skills/tla2tools.jar!/tla2sany/StandardModules/TLCExt.tla)
+Parsing file /tmp/tlc-1719880386215659859/Integers.tla (jar:file:/home/ubuntu-02/.cache/proof-skills/tla2tools.jar!/tla2sany/StandardModules/Integers.tla)
+Semantic processing of module Naturals
+Semantic processing of module Sequences
+Semantic processing of module FiniteSets
+Semantic processing of module TLC
+Semantic processing of module Integers
+Semantic processing of module TLCExt
+Semantic processing of module _TLCTrace
+Semantic processing of module Properties
+Semantic processing of module Spec
+Linting of module TLCExt
+Linting of module _TLCTrace
+Linting of module Properties
+Linting of module Spec
+Starting... (2026-10-29 15:00:46)
+Computing initial states...
+Finished computing initial states: 1 distinct state generated at 2026-10-29 15:00:46.
+Model checking completed. No error has been found.
+  Estimates of the probability that TLC did not check all reachable states
+  because two distinct states had the same fingerprint:
+  calculated (optimistic):  val = 1.6E-16
+The coverage statistics at 2026-10-29 15:00:46 (see https://explain.tlapl.us/module-coverage-statistics for how to interpret the following statistics).
+<mc line 20, col 17 to line 20, col 18 of module Spec>: 7
+<nHuman line 20, col 39 to line 20, col 44 of module Spec>: 4
+<lock line 20, col 33 to line 20, col 36 of module Spec>: 3
+<hist line 20, col 21 to line 20, col 24 of module Spec>: 10
+<nAi line 20, col 47 to line 20, col 49 of module Spec>: 4
+<aipc line 20, col 27 to line 20, col 30 of module Spec>: 7
+<turn line 20, col 11 to line 20, col 14 of module Spec>: 2
+<nUndo line 20, col 52 to line 20, col 56 of module Spec>: 3
+<Init line 36, col 1 to line 36, col 4 of module Spec>: 1:1
+  line 37, col 8 to line 37, col 42 of module Spec: 1
+  line 38, col 15 to line 38, col 42 of module Spec: 1:2
+  |line 38, col 22 to line 38, col 30 of module Spec: 1
+  line 39, col 8 to line 39, col 18 of module Spec: 1
+  line 40, col 8 to line 40, col 41 of module Spec: 1
+<HumanMove line 47, col 1 to line 47, col 9 of module Spec>: 16:16
+  line 48, col 8 to line 48, col 24 of module Spec: 16
+  |line 48, col 8 to line 48, col 13 of module Spec: 95
+  |line 48, col 17 to line 48, col 24 of module Spec: 95
+  line 49, col 8 to line 49, col 17 of module Spec: 84
+  |line 49, col 8 to line 49, col 11 of module Spec: 68
+  line 50, col 8 to line 50, col 14 of module Spec: 16
+  line 50, col 19 to line 50, col 29 of module Spec: 32
+  |line 50, col 19 to line 50, col 22 of module Spec: 16
+  |line 50, col 26 to line 50, col 29 of module Spec: 16
+  line 51, col 8 to line 51, col 32 of module Spec: 16
+  line 52, col 8 to line 52, col 19 of module Spec: 16
+  line 53, col 8 to line 53, col 18 of module Spec: 16
+  line 54, col 8 to line 54, col 27 of module Spec: 16
+  line 55, col 8 to line 55, col 43 of module Spec: 16
+<AiStartOk line 60, col 1 to line 60, col 12 of module Spec>: 20:20
+  line 61, col 8 to line 61, col 23 of module Spec: 210
+  |line 61, col 8 to line 61, col 14 of module Spec: 190
+  line 61, col 28 to line 61, col 43 of module Spec: 20
+  |line 61, col 28 to line 61, col 30 of module Spec: 130
+  |line 61, col 34 to line 61, col 43 of module Spec: 130
+  line 62, col 8 to line 62, col 14 of module Spec: 64
+  line 62, col 19 to line 62, col 29 of module Spec: 84
+  |line 62, col 19 to line 62, col 22 of module Spec: 64
+  |line 62, col 26 to line 62, col 29 of module Spec: 64
+  line 63, col 8 to line 63, col 17 of module Spec: 60
+  |line 63, col 8 to line 63, col 11 of module Spec: 40
+  line 64, col 8 to line 64, col 44 of module Spec: 20
+  line 65, col 8 to line 65, col 44 of module Spec: 20
+  line 66, col 8 to line 66, col 21 of module Spec: 20
+  line 67, col 8 to line 67, col 50 of module Spec: 20
+<AiStartRejected line 70, col 1 to line 70, col 18 of module Spec>: 4:20
+  line 71, col 8 to line 71, col 23 of module Spec: 210
+  |line 71, col 8 to line 71, col 14 of module Spec: 190
+  line 71, col 28 to line 71, col 43 of module Spec: 20
+  |line 71, col 28 to line 71, col 30 of module Spec: 130
+  |line 71, col 34 to line 71, col 43 of module Spec: 130
+  line 72, col 8 to line 72, col 14 of module Spec: 64
+  line 72, col 19 to line 72, col 29 of module Spec: 84
+  |line 72, col 19 to line 72, col 22 of module Spec: 64
+  |line 72, col 26 to line 72, col 29 of module Spec: 64
+  line 73, col 8 to line 73, col 17 of module Spec: 60
+  |line 73, col 8 to line 73, col 11 of module Spec: 40
+  line 74, col 8 to line 74, col 21 of module Spec: 20
+  line 75, col 8 to line 75, col 62 of module Spec: 20
+<AiSearchPush line 78, col 1 to line 78, col 15 of module Spec>: 20:20
+  line 79, col 8 to line 79, col 25 of module Spec: 210
+  |line 79, col 8 to line 79, col 14 of module Spec: 190
+  line 80, col 8 to line 80, col 32 of module Spec: 20
+  line 81, col 8 to line 81, col 46 of module Spec: 20
+  line 82, col 8 to line 82, col 55 of module Spec: 20
+<AiSearchPop line 85, col 1 to line 85, col 14 of module Spec>: 20:20
+  line 86, col 8 to line 86, col 27 of module Spec: 210
+  |line 86, col 8 to line 86, col 14 of module Spec: 190
+  line 87, col 8 to line 87, col 24 of module Spec: 20
+  line 88, col 8 to line 88, col 43 of module Spec: 20
+  line 89, col 8 to line 89, col 55 of module Spec: 20
+<AiApply line 93, col 1 to line 93, col 10 of module Spec>: 7:20
+  line 94, col 8 to line 94, col 24 of module Spec: 210
+  |line 94, col 8 to line 94, col 14 of module Spec: 190
+  line 95, col 8 to line 95, col 32 of module Spec: 20
+  line 96, col 8 to line 96, col 19 of module Spec: 20
+  line 97, col 8 to line 97, col 18 of module Spec: 20
+  line 98, col 8 to line 98, col 42 of module Spec: 20
+  line 99, col 8 to line 99, col 47 of module Spec: 20
+  line 100, col 8 to line 100, col 39 of module Spec: 20
+<Undo line 105, col 1 to line 105, col 4 of module Spec>: 7:9
+  line 106, col 8 to line 106, col 22 of module Spec: 9
+  |line 106, col 8 to line 106, col 12 of module Spec: 95
+  |line 106, col 16 to line 106, col 22 of module Spec: 95
+  line 107, col 8 to line 107, col 14 of module Spec: 9
+  |line 107, col 8 to line 107, col 9 of module Spec: 84
+  line 108, col 8 to line 108, col 14 of module Spec: 40
+  line 108, col 19 to line 108, col 29 of module Spec: 49
+  |line 108, col 19 to line 108, col 22 of module Spec: 40
+  |line 108, col 26 to line 108, col 29 of module Spec: 40
+  line 109, col 8 to line 109, col 20 of module Spec: 16
+  line 109, col 25 to line 109, col 34 of module Spec: 25
+  |line 109, col 25 to line 109, col 28 of module Spec: 16
+  line 110, col 8 to line 110, col 29 of module Spec: 9
+  line 111, col 8 to line 111, col 19 of module Spec: 9
+  line 112, col 8 to line 112, col 18 of module Spec: 9
+  line 113, col 8 to line 113, col 25 of module Spec: 9
+  line 114, col 8 to line 114, col 44 of module Spec: 9
+<TypeOK line 28, col 1 to line 28, col 6 of module Spec>
+  line 29, col 5 to line 34, col 78 of module Spec: 95
+  |line 29, col 8 to line 29, col 26 of module Spec: 95
+  |line 30, col 8 to line 30, col 23 of module Spec: 95
+  |line 31, col 8 to line 31, col 59 of module Spec: 95
+  |line 32, col 8 to line 32, col 36 of module Spec: 95
+  |line 33, col 8 to line 33, col 37 of module Spec: 95
+  ||line 33, col 8 to line 33, col 11 of module Spec: 95
+  ||line 33, col 17 to line 33, col 37 of module Spec: 95
+  |||line 33, col 17 to line 33, col 25 of module Spec: 95
+  |||line 33, col 32 to line 33, col 37 of module Spec: 95:190
+  ||||line 33, col 33 to line 33, col 36 of module Spec: 95
+  |line 34, col 8 to line 34, col 78 of module Spec: 95
+<TurnParity line 124, col 1 to line 124, col 10 of module Spec>
+  line 124, col 22 to line 124, col 33 of module Spec: 95
+<RecordAlternates line 125, col 1 to line 125, col 16 of module Spec>
+  line 125, col 22 to line 125, col 39 of module Spec: 95
+  |line 23, col 1 to line 23, col 24 of module Spec: 35
+  |line 23, col 1 to line 23, col 24 of module Spec: 95
+  |line 23, col 1 to line 23, col 24 of module Spec: 35
+  |line 23, col 1 to line 23, col 24 of module Spec: 95
+  |line 23, col 5 to line 25, col 77 of module Properties: 95
+  ||line 23, col 5 to line 23, col 10 of module Properties: 95
+  |||line 16, col 11 to line 16, col 47 of module Properties: 95
+  ||||line 16, col 32 to line 16, col 47 of module Properties: 160
+  ||||line 16, col 20 to line 16, col 28 of module Properties: 95
+  ||line 24, col 9 to line 25, col 77 of module Properties: 35
+  |||line 24, col 12 to line 24, col 25 of module Properties: 35
+  |||line 25, col 12 to line 25, col 77 of module Properties: 35
+  ||||line 25, col 36 to line 25, col 77 of module Properties: 64
+  ||||line 25, col 21 to line 25, col 32 of module Properties: 35
+<Action line 23, col 1 to line 23, col 24 of module Spec>
+  line 23, col 1 to line 23, col 24 of module Spec: 434
+  line 23, col 1 to line 23, col 24 of module Spec: 36
+  line 29, col 7 to line 30, col 47 of module Properties: 125
+  |line 29, col 9 to line 30, col 39 of module Properties: 125
+  ||line 29, col 10 to line 29, col 62 of module Properties: 125
+  |||line 29, col 10 to line 29, col 35 of module Properties: 125
+  |||line 29, col 40 to line 29, col 62 of module Properties: 56
+  ||line 30, col 16 to line 30, col 39 of module Properties: 36
+End of statistics.
+126 states generated, 95 distinct states found, 0 states left on queue.
+The depth of the complete state graph search is 18.
+The average outdegree of the complete state graph is 1 (minimum is 0, the maximum 2 and the 95th percentile is 2).
+Finished in 00s at (2026-10-29 15:00:46)

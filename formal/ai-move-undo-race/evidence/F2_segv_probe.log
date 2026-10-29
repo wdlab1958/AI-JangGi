@@ -1,0 +1,35 @@
+### interpreter identity
+executable: /home/ubuntu-02/.pyenv/versions/3.12.11/bin/python3
+sys.version: 3.12.3 (main, Aug 31 2026, 10:18:26) [GCC 13.3.0]
+sysconfig VERSION: 3.12 py_version: 3.12
+_asyncio: /home/ubuntu-02/.pyenv/versions/3.12.11/lib/python3.12/lib-dynload/_asyncio.cpython-312-x86_64-linux-gnu.so
+asyncio pkg: /home/ubuntu-02/.pyenv/versions/3.12.11/lib/python3.12/asyncio/__init__.py
+-rwxr-xr-x 1 ubuntu-02 ubuntu-02  17712 2026-04-09 19:57 /home/ubuntu-02/.pyenv/versions/3.12.11/bin/python3.12
+-rwxr-xr-x 1 ubuntu-02 ubuntu-02 413864 2026-04-09 19:57 /home/ubuntu-02/.pyenv/versions/3.12.11/lib/python3.12/lib-dynload/_asyncio.cpython-312-x86_64-linux-gnu.so
+/home/ubuntu-02/.pyenv/shims/python3
+
+### probe A: plain asyncio.to_thread (no logging)
+timeout: 감시 중인 명령에서 코어 덤프
+/bin/bash: 줄 15: 1009401 세그멘테이션 오류 timeout 60 python3 -I -c "import asyncio; print('to_thread ->', asyncio.run(asyncio.to_thread(lambda: 'ok')))"
+exit=139
+
+### probe B: asyncio.current_task() from a plain thread (probe_min.py)
+timeout: 감시 중인 명령에서 코어 덤프
+/bin/bash: 줄 15: 1009602 세그멘테이션 오류 timeout 60 python3 -I probe_min.py
+exit=139
+
+### probe C: to_thread + logger.warning (production pattern: routes.py:92 -> search.py:515)
+timeout: 감시 중인 명령에서 코어 덤프
+/bin/bash: 줄 15: 1009729 세그멘테이션 오류 timeout 60 python3 -I segv_probe.py
+exit=139
+
+### probe D: same as C with logging.logAsyncioTasks=False
+timeout: 감시 중인 명령에서 코어 덤프
+/bin/bash: 줄 15: 1010093 세그멘테이션 오류 timeout 60 python3 -I probe_off.py
+exit=139
+
+### probe E: system /usr/bin/python3 (Python 3.12.3) running C
+WARNING:probe:warning from worker thread (asyncio imported, loop running in main thread)
+to_thread result: ok
+python 3.12.3 -> no crash
+exit=0
