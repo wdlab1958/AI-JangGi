@@ -1,0 +1,67 @@
+commit 8ed10025671fc9dd3c3ea54dbbb37e62bcaded65
+Author: wdlab1958 <wdlab1958@gmail.com>
+Date:   Thu Oct 29 15:15:05 2026 +0900
+
+    formal: WDLAB proof-skills 검증 (ai-move-undo-race) — FIXED / BOUNDED-PASS L2 2026-10-29
+    
+    WDLAB-STD-VERIFY-001 v1.0 W1 Bug hunt. concern: 워커 스레드의 AI 수(ai_move: 턴 확인 →
+    원본 보드 위 투기적 탐색 → 적용)와 이벤트 루프 스레드의 undo/move/추가 ai-move 가 락 없이
+    같은 Game 을 변경하는 경합.
+    
+    - TLA+/TLC: formal/ai-move-undo-race/tla/{Spec,Properties}.tla, 3-config (MC PASS 95 states
+      depth 18 / MC_bug FAIL TurnParity 8 steps / MC_sanity FAIL) + 변이 lock-only, guard-only 각각 FAIL
+    - 재현: tests/test_ai_move_undo_race.py 3건 — 수정 전 속성 단언 실패(test_before.log), 수정 후 통과
+    - 수정 F1: orchestrator.py 게임별 threading.Lock (human_move/undo_move 비블로킹 거부,
+      ai_move 는 락 보유 중 실행), game.py undo_move 가 진행 중 게임의 AI 차례에 거부,
+      websocket_handler.py game:undo 실패를 game:error 로 통지. 공개 API 시그니처 변경 없음.
+    - 부수 발견(미수정): F2 pyenv 3.12.11 혼합 빌드가 asyncio.to_thread 에서 세그폴트(critical, 환경),
+      F3 finalize_game 비멱등, F4 탐색 중 읽기 경합, F5 반복 off-by-one, F6 무르기 버튼 활성, F7 README '#' 유실
+    - README: "형식 검증 — Oct.29, 2026" 절 추가. 보고서: formal/reports/2026-10-29-ai-move-undo-race.md
+    
+    Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+
+ README.md                                          |  13 +-
+ backend/api/websocket_handler.py                   |   5 +
+ backend/engine/game.py                             |   5 +
+ backend/orchestrator/orchestrator.py               |  65 ++++-
+ formal/CANDIDATES.md                               |  28 ++
+ formal/README.md                                   |  51 ++++
+ formal/TOOLCHAIN.lock                              |   7 +
+ formal/ai-move-undo-race/CORRESPONDENCE.md         |  53 ++++
+ formal/ai-move-undo-race/SCOPE.md                  |  47 ++++
+ .../ai-move-undo-race/evidence/F2_segv_probe.log   |  35 +++
+ formal/ai-move-undo-race/evidence/mutation.log     | 113 ++++++++
+ .../evidence/patches/F1-ai-move-undo-race.diff     | 147 ++++++++++
+ formal/ai-move-undo-race/evidence/run_all.log      |  17 ++
+ formal/ai-move-undo-race/evidence/test_after.log   |  16 ++
+ formal/ai-move-undo-race/evidence/test_before.log  | 189 +++++++++++++
+ .../ai-move-undo-race/evidence/test_regression.log |  32 +++
+ .../evidence/test_regression_ai_diagnostic.log     | 172 ++++++++++++
+ formal/ai-move-undo-race/evidence/tlc_bug.log      | 113 ++++++++
+ .../ai-move-undo-race/evidence/tlc_bug_record.log  | 123 +++++++++
+ .../evidence/tlc_bug_record_trace.md               |  11 +
+ formal/ai-move-undo-race/evidence/tlc_bug_trace.md |  10 +
+ formal/ai-move-undo-race/evidence/tlc_coverage.log | 175 ++++++++++++
+ formal/ai-move-undo-race/evidence/tlc_fixed.log    |  35 +++
+ .../ai-move-undo-race/evidence/tlc_fixed_after.log |  35 +++
+ .../evidence/tlc_mutation_guard_only.log           | 133 +++++++++
+ .../evidence/tlc_mutation_guard_only_trace.md      |  12 +
+ .../evidence/tlc_mutation_lock_only.log            | 113 ++++++++
+ .../evidence/tlc_mutation_lock_only_trace.md       |  10 +
+ formal/ai-move-undo-race/evidence/tlc_sanity.log   | 113 ++++++++
+ formal/ai-move-undo-race/evidence/tlc_sanity2.log  |  73 +++++
+ .../repro/F2_segv_probe_worker_logging.py          |  11 +
+ formal/ai-move-undo-race/tla/MC.cfg                |  16 ++
+ formal/ai-move-undo-race/tla/MC_bug.cfg            |  16 ++
+ formal/ai-move-undo-race/tla/MC_bug_record.cfg     |  12 +
+ formal/ai-move-undo-race/tla/MC_guard_only.cfg     |  16 ++
+ formal/ai-move-undo-race/tla/MC_lock_only.cfg      |  16 ++
+ formal/ai-move-undo-race/tla/MC_sanity.cfg         |  12 +
+ formal/ai-move-undo-race/tla/MC_sanity2.cfg        |  12 +
+ formal/ai-move-undo-race/tla/Properties.tla        |  31 +++
+ formal/ai-move-undo-race/tla/Spec.tla              | 132 +++++++++
+ formal/findings.json                               | 187 +++++++++++++
+ formal/reports/2026-10-29-ai-move-undo-race.md     | 307 +++++++++++++++++++++
+ formal/run_all.sh                                  |  51 ++++
+ tests/test_ai_move_undo_race.py                    | 218 +++++++++++++++
+ 44 files changed, 2972 insertions(+), 16 deletions(-)
